@@ -16,16 +16,17 @@ function App() {
     <Router>
       <div className="min-h-screen bg-white">
         <Navbar toggleSidebar={toggleSidebar} />
-        <div className="flex pt-16 min-h-screen">
-          <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
-
-          <main className="flex-1 bg-gray-50">
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/dashboard" element={<HomePage />} />
-              {/* Add more routes as needed */}
-            </Routes>
-          </main>
+        <div className="fixed inset-0 pt-20">
+          <div className="flex h-full">
+            <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
+            <main className="flex-1 overflow-y-auto bg-gray-50">
+              <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/dashboard" element={<HomePage />} />
+                {/* Add more routes as needed */}
+              </Routes>
+            </main>
+          </div>
         </div>
       </div>
     </Router>

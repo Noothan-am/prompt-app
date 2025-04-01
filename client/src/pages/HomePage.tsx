@@ -1,8 +1,21 @@
 import { useState } from "react";
 import PostCard from "../components/PostCard";
 import SidebarSection from "../components/SidebarSection";
+import PostForm from "../components/PostForm";
+import { IoAddOutline } from "react-icons/io5";
+
+interface Post {
+  id: string;
+  title: string;
+  content: string;
+  files: File[];
+  timestamp: number;
+}
 
 export default function HomePage() {
+  const [showPostForm, setShowPostForm] = useState(false);
+  const [posts, setPosts] = useState<Post[]>([]);
+
   // Sample data for hot topics
   const hotTopics = [
     {
@@ -69,20 +82,62 @@ export default function HomePage() {
     },
   ];
 
+  const handleNewPost = (postData: {
+    title: string;
+    content: string;
+    files: File[];
+  }) => {
+    const newPost: Post = {
+      id: Date.now().toString(),
+      ...postData,
+      timestamp: Date.now(),
+    };
+    setPosts((prevPosts) => [newPost, ...prevPosts]);
+    setShowPostForm(false);
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-6xl mx-auto flex flex-col lg:flex-row gap-6 mt-6">
+    <div className="min-h-full bg-gray-50">
+      <div className="max-w-6xl mx-auto flex flex-col lg:flex-row gap-6">
         {/* Main content - wider on larger screens */}
-        <div className="w-full lg:w-8/12 xl:w-9/12">
+        <div className="w-full lg:w-8/12 xl:w-9/12 p-4">
+          {posts.map((post) => (
+            <PostCard
+              key={post.id}
+              title={post.title}
+              content={post.content}
+              files={post.files}
+              timestamp={post.timestamp}
+            />
+          ))}
           <PostCard />
         </div>
 
-        {/* Sidebar - hidden on mobile, visible on desktop */}
-        <div className="hidden lg:block lg:w-4/12 xl:w-3/12 space-y-4">
-          <SidebarSection title="Hot Topics" items={hotTopics} />
-          <SidebarSection title="Recommended" items={recommended} />
-        </div>
+        <aside className="hidden lg:block lg:w-4/12 xl:w-4/12">
+          <div className="p-4">
+            <div className="space-y-4">
+              <SidebarSection title="Hot Topics" items={hotTopics} />
+              <SidebarSection title="Recommended" items={recommended} />
+            </div>
+          </div>
+        </aside>
       </div>
+
+      {/* Sticky Post Button */}
+      <button
+        onClick={() => setShowPostForm(true)}
+        className="fixed bottom-8 right-8 w-14 h-14 bg-blue-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-blue-600 transition-colors z-40"
+      >
+        <IoAddOutline className="w-8 h-8" />
+      </button>
+
+      {/* Post Form Modal */}
+      {showPostForm && (
+        <PostForm
+          onSubmit={handleNewPost}
+          onClose={() => setShowPostForm(false)}
+        />
+      )}
     </div>
   );
 }

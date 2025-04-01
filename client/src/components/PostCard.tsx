@@ -5,6 +5,7 @@ interface Comment {
   text: string;
   author: string;
   timestamp: number;
+  replies: Comment[];
 }
 
 interface PostData {
@@ -15,9 +16,25 @@ interface PostData {
   userVote?: "up" | "down" | null;
 }
 
-function PostCard() {
+interface PostCardProps {
+  title?: string;
+  content?: string;
+  files?: File[];
+  timestamp?: number;
+}
+
+function PostCard({
+  title: propTitle,
+  content: propContent,
+  files: propFiles,
+  timestamp: propTimestamp,
+}: PostCardProps) {
   const [showComments, setShowComments] = useState(false);
+  const [showFullText, setShowFullText] = useState(false);
   const [newComment, setNewComment] = useState("");
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [postData, setPostData] = useState<PostData>({
     id: "post1",
     upvotes: 58,
@@ -29,6 +46,18 @@ function PostCard() {
   // Reference to the comment section
   const commentSectionRef = useRef<HTMLDivElement>(null);
   const commentButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Create URLs for image files
+  useEffect(() => {
+    if (propFiles) {
+      const urls = propFiles.map((file) => URL.createObjectURL(file));
+      setImageUrls(urls);
+      return () => {
+        // Cleanup URLs when component unmounts
+        urls.forEach((url) => URL.revokeObjectURL(url));
+      };
+    }
+  }, [propFiles]);
 
   // Load data from localStorage on component mount
   useEffect(() => {
@@ -102,7 +131,7 @@ function PostCard() {
     });
   };
 
-  const handleSubmitComment = (e: React.FormEvent) => {
+  const handleSubmitComment = (e: React.FormEvent, parentId?: string) => {
     e.preventDefault();
     if (!newComment.trim()) return;
 
@@ -111,12 +140,37 @@ function PostCard() {
       text: newComment,
       author: "Anonymous User", // You can replace with actual user data
       timestamp: Date.now(),
+      replies: [],
     };
 
-    setPostData((prev) => ({
-      ...prev,
-      comments: [...prev.comments, newCommentObj],
-    }));
+    setPostData((prev) => {
+      if (parentId) {
+        // Add reply to existing comment
+        const addReplyToComment = (comments: Comment[]): Comment[] => {
+          return comments.map((comment) => {
+            if (comment.id === parentId) {
+              return {
+                ...comment,
+                replies: [...comment.replies, newCommentObj],
+              };
+            }
+            return {
+              ...comment,
+              replies: addReplyToComment(comment.replies),
+            };
+          });
+        };
+        return {
+          ...prev,
+          comments: addReplyToComment(prev.comments),
+        };
+      } else {
+        return {
+          ...prev,
+          comments: [...prev.comments, newCommentObj],
+        };
+      }
+    });
 
     setNewComment("");
   };
@@ -130,8 +184,186 @@ function PostCard() {
       .catch(() => alert("Failed to copy link"));
   };
 
+  const handleReplyClick = (commentId: string) => {
+    setReplyingTo(commentId);
+    setReplyText("");
+  };
+
+  const handleSubmitReply = (
+    e: React.FormEvent,
+    parentId: string,
+    replyContent: string
+  ) => {
+    e.preventDefault();
+    if (!replyContent.trim()) return;
+
+    const newCommentObj: Comment = {
+      id: Date.now().toString(),
+      text: replyContent,
+      author: "Anonymous User",
+      timestamp: Date.now(),
+      replies: [],
+    };
+
+    setPostData((prev) => {
+      const addReplyToComment = (comments: Comment[]): Comment[] => {
+        return comments.map((comment) => {
+          if (comment.id === parentId) {
+            return {
+              ...comment,
+              replies: [...comment.replies, newCommentObj],
+            };
+          }
+          // Recursively search in replies
+          if (comment.replies.length > 0) {
+            return {
+              ...comment,
+              replies: addReplyToComment(comment.replies),
+            };
+          }
+          return comment;
+        });
+      };
+
+      return {
+        ...prev,
+        comments: addReplyToComment(prev.comments),
+      };
+    });
+
+    setReplyingTo(null);
+  };
+
   // Calculate net vote count
   const voteCount = postData.upvotes - postData.downvotes;
+
+  // Calculate total number of comments including replies
+  const getTotalCommentCount = (comments: Comment[]): number => {
+    return comments.reduce((total, comment) => {
+      // Add 1 for the current comment and recursively count replies
+      return total + 1 + getTotalCommentCount(comment.replies);
+    }, 0);
+  };
+
+  const title =
+    propTitle ||
+    "2cr PA at 30 years. Worked in FAANG companies and startups over the years.";
+  const content =
+    propContent ||
+    `Hi Folks, sharing my journey as a software engineer, for those who might
+    find it helpful. Graduated from a tier 3 college, 8 years ago. My branch
+    was not CS, so didn't really study DSA or many of other core concepts
+    formally. I liked web development though, so I made multiple side
+    projects and worked as a freelancer on over 100 small projects in my
+    college days. These projects mostly used HTML,CSS, JS, PHP and Nodejs.
+    After graduating, the best offer I could expect through placements was
+    that of Infosys. So I went off campus and...`;
+  const timestamp = propTimestamp || Date.now();
+
+  const shouldTruncate = content.length > 450;
+  const truncatedText = shouldTruncate
+    ? content.slice(0, 450) + "..."
+    : content;
+
+  const isImageFile = (file: File) => file.type.startsWith("image/");
+  const isVideoFile = (file: File) => file.type.startsWith("video/");
+  const isDocumentFile = (file: File) => file.type.startsWith("application/");
+
+  const RecursiveComment = ({
+    comment,
+    depth = 0,
+  }: {
+    comment: Comment;
+    depth?: number;
+  }) => {
+    const [localReplyText, setLocalReplyText] = useState("");
+
+    const handleReplyButtonClick = (e: React.MouseEvent) => {
+      e.preventDefault(); // Prevent default behavior
+      e.stopPropagation(); // Prevent event bubbling
+      handleReplyClick(comment.id);
+    };
+
+    const handleCancelReply = () => {
+      setReplyingTo(null);
+      setLocalReplyText("");
+    };
+
+    return (
+      <div
+        className={`${
+          depth > 0 ? "ml-8 border-l-2 border-gray-200 pl-4" : "border-b"
+        } pb-3`}
+      >
+        <div className="flex items-center gap-2 mb-2">
+          <span className="font-medium">{comment.author}</span>
+          <span className="text-gray-500 text-sm">
+            {new Date(comment.timestamp).toLocaleString()}
+          </span>
+        </div>
+        <p className="text-gray-700">{comment.text}</p>
+
+        <div className="flex items-center gap-4 mt-2">
+          {/* Reply button */}
+          <button
+            onClick={handleReplyButtonClick}
+            className="text-sm text-blue-500 hover:text-blue-600"
+          >
+            Reply
+          </button>
+        </div>
+
+        {/* Reply form */}
+        {replyingTo === comment.id && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!localReplyText.trim()) return;
+              handleSubmitReply(e, comment.id, localReplyText);
+              setLocalReplyText("");
+            }}
+            className="mt-4"
+          >
+            <textarea
+              className="w-full p-3 border rounded-md resize-none mb-2"
+              placeholder={`Reply to ${comment.author}...`}
+              rows={2}
+              value={localReplyText}
+              onChange={(e) => setLocalReplyText(e.target.value)}
+            />
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                className="px-4 py-2 bg-blue-500 text-white rounded-full font-medium hover:bg-blue-600 disabled:opacity-50"
+                disabled={!localReplyText.trim()}
+              >
+                Reply
+              </button>
+              <button
+                type="button"
+                onClick={handleCancelReply}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* Replies are always visible */}
+        <div className="mt-4 space-y-4">
+          {comment.replies.length > 0 &&
+            comment.replies.map((reply) => (
+              <RecursiveComment
+                key={reply.id}
+                comment={reply}
+                depth={depth + 1}
+              />
+            ))}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="w-full bg-white rounded-lg p-4 mb-4 border border-gray-300 mt-2">
@@ -142,24 +374,104 @@ function PostCard() {
           className="w-6 h-6 rounded-full"
         />
         <span className="text-blue-500">r/developersIndia</span>
-        <span className="text-gray-500">• 42 min. ago</span>
+        <span className="text-gray-500">
+          • {new Date(timestamp).toLocaleString()}
+        </span>
       </div>
 
-      <h2 className="text-xl font-semibold text-gray-900 mb-3">
-        2cr PA at 30 years. Worked in FAANG companies and startups over the
-        years.
-      </h2>
+      <h2 className="text-xl font-semibold text-gray-900 mb-3">{title}</h2>
 
-      <p className="text-gray-700 mb-4">
-        Hi Folks, sharing my journey as a software engineer, for those who might
-        find it helpful. Graduated from a tier 3 college, 8 years ago. My branch
-        was not CS, so didn't really study DSA or many of other core concepts
-        formally. I liked web development though, so I made multiple side
-        projects and worked as a freelancer on over 100 small projects in my
-        college days. These projects mostly used HTML,CSS, JS, PHP and Nodejs.
-        After graduating, the best offer I could expect through placements was
-        that of Infosys. So I went off campus and...
-      </p>
+      <div className="text-gray-700 mb-4">
+        <p>{showFullText ? content : truncatedText}</p>
+        {shouldTruncate && (
+          <button
+            onClick={() => setShowFullText(!showFullText)}
+            className="text-blue-500 hover:text-blue-600 font-medium mt-2"
+          >
+            {showFullText ? "Show less" : "Show more"}
+          </button>
+        )}
+      </div>
+
+      {propFiles && propFiles.length > 0 && (
+        <div className="mb-4">
+          <h3 className="text-sm font-medium text-gray-700 mb-2">
+            Attachments:
+          </h3>
+          <div className="grid grid-cols-1 gap-4">
+            {propFiles.map((file, index) => (
+              <div key={index} className="relative">
+                {isImageFile(file) ? (
+                  <div className="relative bg-gray-100 rounded-lg overflow-hidden">
+                    <div className="flex items-center justify-center min-h-[200px] max-h-[400px]">
+                      <img
+                        src={imageUrls[index]}
+                        alt={file.name}
+                        className="max-w-full max-h-[400px] h-auto w-auto object-contain"
+                      />
+                    </div>
+                    <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-sm p-2 truncate">
+                      {file.name}
+                    </div>
+                  </div>
+                ) : isVideoFile(file) ? (
+                  <div className="relative bg-gray-100 rounded-lg overflow-hidden w-full">
+                    <div className="aspect-video w-full">
+                      <video
+                        src={imageUrls[index]}
+                        controls
+                        className="w-full h-full"
+                        controlsList="nodownload"
+                        playsInline
+                        preload="metadata"
+                      >
+                        Your browser does not support the video tag.
+                      </video>
+                    </div>
+                    <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-sm p-2 truncate pointer-events-none">
+                      {file.name}
+                    </div>
+                  </div>
+                ) : isDocumentFile(file) ? (
+                  <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                    <svg
+                      className="w-6 h-6 text-gray-500"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
+                    <span className="text-sm text-gray-600">{file.name}</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                    <svg
+                      className="w-6 h-6 text-gray-500"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                      />
+                    </svg>
+                    <span className="text-sm text-gray-600">{file.name}</span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Footer section */}
       <div className="flex items-center gap-6 text-gray-500">
@@ -195,7 +507,7 @@ function PostCard() {
           <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
             <path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5z" />
           </svg>
-          <span>{postData.comments.length}</span>
+          <span>{getTotalCommentCount(postData.comments)}</span>
         </button>
 
         <button
@@ -213,11 +525,11 @@ function PostCard() {
       {showComments && (
         <div ref={commentSectionRef} className="mt-4 border-t pt-4">
           <h3 className="font-medium text-lg mb-4">
-            Comments ({postData.comments.length})
+            Comments ({getTotalCommentCount(postData.comments)})
           </h3>
 
           {/* Comment form */}
-          <form onSubmit={handleSubmitComment} className="mb-6">
+          <form onSubmit={(e) => handleSubmitComment(e)} className="mb-6">
             <textarea
               className="w-full p-3 border rounded-md resize-none mb-2"
               placeholder="What are your thoughts?"
@@ -242,15 +554,7 @@ function PostCard() {
               </p>
             ) : (
               postData.comments.map((comment) => (
-                <div key={comment.id} className="border-b pb-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="font-medium">{comment.author}</span>
-                    <span className="text-gray-500 text-sm">
-                      {new Date(comment.timestamp).toLocaleString()}
-                    </span>
-                  </div>
-                  <p className="text-gray-700">{comment.text}</p>
-                </div>
+                <RecursiveComment key={comment.id} comment={comment} />
               ))
             )}
           </div>

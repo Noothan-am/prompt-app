@@ -39,17 +39,16 @@ function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
 
       {/* Sidebar */}
       <div
-        className={`fixed lg:static inset-y-0 left-0 w-72 bg-white border-r border-gray-200 flex flex-col transform transition-transform duration-300 ease-in-out z-40 ${
+        className={`w-72 min-w-[288px] bg-white border-r border-gray-200 flex flex-col transform transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         } lg:translate-x-0`}
-        style={{ top: "64px" }}
       >
-        <nav className="flex-1 mt-10 overflow-y-auto">
-          <div className="px-4 py-2">
+        <nav className="flex-1 px-4 py-4">
+          <div className="space-y-2">
             {/* Dashboard */}
             <Link
               to="/dashboard"
-              className="flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg mb-2 text-lg"
+              className="flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg text-lg"
             >
               <RiDashboardLine className="w-6 h-6 mr-4" />
               <span>Dashboard</span>
@@ -59,7 +58,7 @@ function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
             <div>
               <button
                 onClick={() => setIsEcommerceOpen(!isEcommerceOpen)}
-                className="w-full flex items-center justify-between px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg mb-2 text-lg"
+                className="w-full flex items-center justify-between px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg text-lg"
               >
                 <div className="flex items-center">
                   <BsShop className="w-6 h-6 mr-4" />
@@ -77,7 +76,7 @@ function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
             {/* Inbox */}
             <Link
               to="/inbox"
-              className="flex items-center justify-between px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg mb-2 text-lg"
+              className="flex items-center justify-between px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg text-lg"
             >
               <div className="flex items-center">
                 <HiInbox className="w-6 h-6 mr-4" />
@@ -91,7 +90,7 @@ function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
             {/* Profile */}
             <Link
               to="/profile"
-              className="flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg mb-2 text-lg"
+              className="flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg text-lg"
             >
               <CgProfile className="w-6 h-6 mr-4" />
               <span>Profile</span>
@@ -100,7 +99,7 @@ function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
             {/* Settings */}
             <Link
               to="/settings"
-              className="flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg mb-2 text-lg"
+              className="flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg text-lg"
             >
               <IoSettingsOutline className="w-6 h-6 mr-4" />
               <span>Settings</span>
