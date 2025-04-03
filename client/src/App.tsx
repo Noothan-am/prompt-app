@@ -4,6 +4,7 @@ import "./App.css";
 import Sidebar from "./components/Sidebar";
 import Navbar from "./components/Navbar";
 import HomePage from "./pages/HomePage";
+import Dashboard from "./pages/Dashboard";
 
 function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -12,21 +13,37 @@ function App() {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
+  // Close sidebar when clicking outside on mobile
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setIsSidebarOpen(true);
+      } else {
+        setIsSidebarOpen(false);
+      }
+    };
+
+    // Set initial state
+    handleResize();
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   return (
     <Router>
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-white flex flex-col">
         <Navbar toggleSidebar={toggleSidebar} />
-        <div className="fixed inset-0 pt-20">
-          <div className="flex h-full relative">
-            <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
-            <main className="flex-1 overflow-y-auto bg-gray-50 w-full">
-              <Routes>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/dashboard" element={<HomePage />} />
-                {/* Add more routes as needed */}
-              </Routes>
-            </main>
-          </div>
+        <div className="flex flex-1 pt-[3.5rem] md:pt-[4rem]">
+          <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
+          <main className="flex-1 overflow-y-auto bg-gray-50">
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/prompts" element={<Dashboard />} />
+              {/* Add more routes as needed */}
+            </Routes>
+          </main>
         </div>
       </div>
     </Router>
