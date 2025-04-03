@@ -98,9 +98,9 @@ export default function HomePage() {
 
   return (
     <div className="min-h-full bg-gray-50">
-      <div className="max-w-6xl mx-auto flex flex-col lg:flex-row gap-6">
+      <div className="max-w-6xl mx-auto flex flex-col lg:flex-row gap-6 px-4 lg:px-6">
         {/* Main content - wider on larger screens */}
-        <div className="w-full lg:w-8/12 xl:w-9/12 p-4">
+        <div className="w-full lg:w-8/12 xl:w-9/12">
           {posts.map((post) => (
             <PostCard
               key={post.id}
@@ -113,12 +113,10 @@ export default function HomePage() {
           <PostCard />
         </div>
 
-        <aside className="hidden lg:block lg:w-4/12 xl:w-4/12">
-          <div className="p-4">
-            <div className="space-y-4">
-              <SidebarSection title="Hot Topics" items={hotTopics} />
-              <SidebarSection title="Recommended" items={recommended} />
-            </div>
+        <aside className="hidden lg:block lg:w-4/12 xl:w-3/12">
+          <div className="space-y-4">
+            <SidebarSection title="Hot Topics" items={hotTopics} />
+            <SidebarSection title="Recommended" items={recommended} />
           </div>
         </aside>
       </div>

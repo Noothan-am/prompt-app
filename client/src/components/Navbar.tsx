@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   IoSearchOutline,
@@ -6,12 +6,19 @@ import {
   IoMenuOutline,
 } from "react-icons/io5";
 import { BsChatDots } from "react-icons/bs";
+import ChatModal from "./ChatModal";
 
 interface NavbarProps {
   toggleSidebar: () => void;
 }
 
 function Navbar({ toggleSidebar }: NavbarProps) {
+  const [showChatModal, setShowChatModal] = useState(false);
+
+  const toggleChatModal = () => {
+    setShowChatModal(!showChatModal);
+  };
+
   return (
     <>
       {/* Top Navbar */}
@@ -43,7 +50,10 @@ function Navbar({ toggleSidebar }: NavbarProps) {
 
         {/* Desktop Only - Right section */}
         <div className="hidden lg:flex items-center space-x-6">
-          <button className="p-3 text-gray-700 hover:bg-gray-100 rounded-lg">
+          <button
+            onClick={toggleChatModal}
+            className="p-3 text-gray-700 hover:bg-gray-100 rounded-lg"
+          >
             <BsChatDots className="w-8 h-8" />
           </button>
           <button className="p-3 text-gray-700 hover:bg-gray-100 rounded-lg">
@@ -57,7 +67,10 @@ function Navbar({ toggleSidebar }: NavbarProps) {
 
       {/* Mobile Footer Navigation */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 h-20 bg-white border-t border-gray-200 flex items-center justify-around px-6 z-50">
-        <button className="p-3 text-gray-700 hover:bg-gray-100 rounded-lg">
+        <button
+          onClick={toggleChatModal}
+          className="p-3 text-gray-700 hover:bg-gray-100 rounded-lg"
+        >
           <BsChatDots className="w-8 h-8" />
         </button>
         <button className="p-3 text-gray-700 hover:bg-gray-100 rounded-lg">
@@ -67,6 +80,12 @@ function Navbar({ toggleSidebar }: NavbarProps) {
           <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
         </button>
       </div>
+
+      {/* Chat Modal */}
+      <ChatModal
+        isOpen={showChatModal}
+        onClose={() => setShowChatModal(false)}
+      />
     </>
   );
 }

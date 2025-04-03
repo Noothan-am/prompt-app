@@ -39,11 +39,11 @@ function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
 
       {/* Sidebar */}
       <div
-        className={`w-72 min-w-[288px] bg-white border-r border-gray-200 flex flex-col transform transition-transform duration-300 ease-in-out ${
+        className={`fixed lg:static top-0 left-0 h-full w-72 min-w-[288px] bg-white border-r border-gray-200 flex flex-col transform transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "-translate-x-full"
-        } lg:translate-x-0`}
+        } lg:translate-x-0 z-40`}
       >
-        <nav className="flex-1 px-4 py-4">
+        <nav className="flex-1 px-4 py-20 lg:py-4">
           <div className="space-y-2">
             {/* Dashboard */}
             <Link

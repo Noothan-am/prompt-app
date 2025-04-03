@@ -17,9 +17,9 @@ function App() {
       <div className="min-h-screen bg-white">
         <Navbar toggleSidebar={toggleSidebar} />
         <div className="fixed inset-0 pt-20">
-          <div className="flex h-full">
+          <div className="flex h-full relative">
             <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
-            <main className="flex-1 overflow-y-auto bg-gray-50">
+            <main className="flex-1 overflow-y-auto bg-gray-50 w-full">
               <Routes>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/dashboard" element={<HomePage />} />

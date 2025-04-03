@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { IoChevronBackOutline, IoChevronForwardOutline } from "react-icons/io5";
 
 interface Comment {
   id: string;
@@ -35,6 +36,7 @@ function PostCard({
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [currentFileIndex, setCurrentFileIndex] = useState(0);
   const [postData, setPostData] = useState<PostData>({
     id: "post1",
     upvotes: 58,
@@ -49,7 +51,7 @@ function PostCard({
 
   // Create URLs for image files
   useEffect(() => {
-    if (propFiles) {
+    if (propFiles && propFiles.length > 0) {
       const urls = propFiles.map((file) => URL.createObjectURL(file));
       setImageUrls(urls);
       return () => {
@@ -269,6 +271,24 @@ function PostCard({
   const isVideoFile = (file: File) => file.type.startsWith("video/");
   const isDocumentFile = (file: File) => file.type.startsWith("application/");
 
+  const handlePreviousFile = () => {
+    setCurrentFileIndex((prevIndex) =>
+      prevIndex === 0 ? imageUrls.length - 1 : prevIndex - 1
+    );
+  };
+
+  const handleNextFile = () => {
+    setCurrentFileIndex((prevIndex) =>
+      prevIndex === imageUrls.length - 1 ? 0 : prevIndex + 1
+    );
+  };
+
+  // Get the current file extension
+  const getFileExtension = (url: string) => {
+    const filename = url.split("/").pop() || "";
+    return filename.split(".").pop()?.toLowerCase() || "";
+  };
+
   const RecursiveComment = ({
     comment,
     depth = 0,
@@ -394,82 +414,130 @@ function PostCard({
       </div>
 
       {propFiles && propFiles.length > 0 && (
-        <div className="mb-4">
-          <h3 className="text-sm font-medium text-gray-700 mb-2">
-            Attachments:
-          </h3>
-          <div className="grid grid-cols-1 gap-4">
-            {propFiles.map((file, index) => (
-              <div key={index} className="relative">
-                {isImageFile(file) ? (
-                  <div className="relative bg-gray-100 rounded-lg overflow-hidden">
-                    <div className="flex items-center justify-center min-h-[200px] max-h-[400px]">
-                      <img
-                        src={imageUrls[index]}
-                        alt={file.name}
-                        className="max-w-full max-h-[400px] h-auto w-auto object-contain"
-                      />
-                    </div>
-                    <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-sm p-2 truncate">
-                      {file.name}
-                    </div>
-                  </div>
-                ) : isVideoFile(file) ? (
-                  <div className="relative bg-gray-100 rounded-lg overflow-hidden w-full">
-                    <div className="aspect-video w-full">
-                      <video
-                        src={imageUrls[index]}
-                        controls
-                        className="w-full h-full"
-                        controlsList="nodownload"
-                        playsInline
-                        preload="metadata"
+        <div className="relative mb-4 rounded-lg overflow-hidden">
+          {/* File counter */}
+          {propFiles.length > 1 && (
+            <div className="absolute top-2 right-2 bg-black bg-opacity-60 text-white px-2 py-1 rounded-md text-sm z-10">
+              {currentFileIndex + 1}/{propFiles.length}
+            </div>
+          )}
+
+          {/* Current file display */}
+          <div className="relative">
+            {propFiles &&
+              (() => {
+                const currentFile = propFiles[currentFileIndex];
+                if (isImageFile(currentFile)) {
+                  return (
+                    <img
+                      src={imageUrls[currentFileIndex]}
+                      alt={`Attachment ${currentFileIndex + 1}`}
+                      className="w-full h-auto max-h-[500px] object-contain"
+                    />
+                  );
+                } else if (isVideoFile(currentFile)) {
+                  return (
+                    <video
+                      src={imageUrls[currentFileIndex]}
+                      controls
+                      className="w-full h-auto max-h-[500px]"
+                    >
+                      Your browser doesn't support video playback.
+                    </video>
+                  );
+                } else if (isDocumentFile(currentFile)) {
+                  const fileExtension = getFileExtension(
+                    imageUrls[currentFileIndex]
+                  );
+                  return (
+                    <div className="bg-gray-100 p-4 rounded-lg text-center">
+                      <div className="text-4xl mb-2">📄</div>
+                      <p className="font-medium">{currentFile.name}</p>
+                      <p className="text-gray-500 text-sm">
+                        {fileExtension.toUpperCase()} Document •{" "}
+                        {(currentFile.size / 1024).toFixed(1)} KB
+                      </p>
+                      <a
+                        href={imageUrls[currentFileIndex]}
+                        download={currentFile.name}
+                        className="mt-2 inline-block bg-blue-500 text-white px-4 py-2 rounded-md"
                       >
-                        Your browser does not support the video tag.
-                      </video>
+                        Download
+                      </a>
                     </div>
-                    <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-sm p-2 truncate pointer-events-none">
-                      {file.name}
+                  );
+                } else {
+                  return (
+                    <div className="bg-gray-100 p-4 rounded-lg text-center">
+                      <div className="text-4xl mb-2">🗂️</div>
+                      <p className="font-medium">{currentFile.name}</p>
+                      <p className="text-gray-500 text-sm">
+                        Unknown file type •{" "}
+                        {(currentFile.size / 1024).toFixed(1)} KB
+                      </p>
+                      <a
+                        href={imageUrls[currentFileIndex]}
+                        download={currentFile.name}
+                        className="mt-2 inline-block bg-blue-500 text-white px-4 py-2 rounded-md"
+                      >
+                        Download
+                      </a>
                     </div>
-                  </div>
-                ) : isDocumentFile(file) ? (
-                  <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                    <svg
-                      className="w-6 h-6 text-gray-500"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      />
-                    </svg>
-                    <span className="text-sm text-gray-600">{file.name}</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                    <svg
-                      className="w-6 h-6 text-gray-500"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-                      />
-                    </svg>
-                    <span className="text-sm text-gray-600">{file.name}</span>
-                  </div>
-                )}
-              </div>
-            ))}
+                  );
+                }
+              })()}
+
+            {/* Navigation Controls */}
+            {propFiles.length > 1 && (
+              <>
+                <button
+                  onClick={handlePreviousFile}
+                  className="absolute left-0 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-r-md hover:bg-opacity-70"
+                >
+                  <IoChevronBackOutline className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={handleNextFile}
+                  className="absolute right-0 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-l-md hover:bg-opacity-70"
+                >
+                  <IoChevronForwardOutline className="w-5 h-5" />
+                </button>
+              </>
+            )}
           </div>
+
+          {/* Thumbnail navigation for multiple files */}
+          {propFiles.length > 1 && (
+            <div className="flex overflow-x-auto mt-2 space-x-2 p-1">
+              {propFiles.map((file, index) => (
+                <div
+                  key={index}
+                  onClick={() => setCurrentFileIndex(index)}
+                  className={`flex-shrink-0 w-16 h-16 cursor-pointer rounded-md overflow-hidden border-2 ${
+                    index === currentFileIndex
+                      ? "border-blue-500"
+                      : "border-transparent"
+                  }`}
+                >
+                  {isImageFile(file) ? (
+                    <img
+                      src={imageUrls[index]}
+                      alt={`Thumbnail ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : isVideoFile(file) ? (
+                    <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                      🎬
+                    </div>
+                  ) : (
+                    <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                      📄
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
