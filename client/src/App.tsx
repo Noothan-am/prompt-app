@@ -41,7 +41,6 @@ function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/prompts" element={<Dashboard />} />
-              {/* Add more routes as needed */}
             </Routes>
           </main>
         </div>
