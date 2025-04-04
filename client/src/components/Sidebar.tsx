@@ -11,6 +11,7 @@ import { IoLogOutOutline } from "react-icons/io5";
 import { IoChevronDownOutline } from "react-icons/io5";
 import { HiMenuAlt2 } from "react-icons/hi";
 import { FiFileText, FiChevronLeft, FiChevronRight } from "react-icons/fi";
+import { HiUserGroup } from "react-icons/hi";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -90,6 +91,17 @@ function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
               >
                 <FiFileText className="w-6 h-6 flex-shrink-0" />
                 {!isCollapsed && <span className="ml-4">Prompts</span>}
+              </Link>
+
+              {/* Communities */}
+              <Link
+                to="/communities"
+                className={`flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg ${
+                  isCollapsed ? "justify-center" : "text-lg"
+                }`}
+              >
+                <HiUserGroup className="w-6 h-6 flex-shrink-0" />
+                {!isCollapsed && <span className="ml-4">Communities</span>}
               </Link>
 
               {/* E-Commerce with dropdown */}

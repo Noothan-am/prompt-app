@@ -5,6 +5,7 @@ import Sidebar from "./components/Sidebar";
 import Navbar from "./components/Navbar";
 import HomePage from "./pages/HomePage";
 import Dashboard from "./pages/Dashboard";
+import CommunitiesPage from "./pages/CommunitiesPage";
 
 function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -41,6 +42,7 @@ function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/prompts" element={<Dashboard />} />
+              <Route path="/communities" element={<CommunitiesPage />} />
             </Routes>
           </main>
         </div>
