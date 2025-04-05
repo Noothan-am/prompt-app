@@ -6,6 +6,7 @@ import Navbar from "./components/Navbar";
 import HomePage from "./pages/HomePage";
 import Dashboard from "./pages/Dashboard";
 import CommunitiesPage from "./pages/CommunitiesPage";
+import RedditStyleCommunityPage from "./pages/RedditStyleCommunityPage";
 
 function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -43,6 +44,10 @@ function App() {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/prompts" element={<Dashboard />} />
               <Route path="/communities" element={<CommunitiesPage />} />
+              <Route
+                path="/community/:id"
+                element={<RedditStyleCommunityPage />}
+              />
             </Routes>
           </main>
         </div>
