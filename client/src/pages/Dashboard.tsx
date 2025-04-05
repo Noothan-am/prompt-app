@@ -1,5 +1,13 @@
-import React, { useState, useEffect } from "react";
-import { FiSearch, FiPlus, FiSave, FiTag, FiX, FiEdit } from "react-icons/fi";
+import React, { useState, useEffect, FormEvent, useRef } from "react";
+import {
+  FiSearch,
+  FiPlus,
+  FiSave,
+  FiTag,
+  FiX,
+  FiEdit,
+  FiShare2,
+} from "react-icons/fi";
 
 interface Prompt {
   id: string;
@@ -19,6 +27,17 @@ interface Category {
   color: string;
 }
 
+// Add Community interface to match the one in CommunitiesPage
+interface Community {
+  id: number;
+  name: string;
+  description: string;
+  members: number;
+  joined: boolean;
+  icon: string;
+  posts: any[]; // Simplified as we don't need the full Post type here
+}
+
 const Dashboard = () => {
   // State management
   const [prompts, setPrompts] = useState<Prompt[]>([]);
@@ -34,6 +53,13 @@ const Dashboard = () => {
   const [newCategory, setNewCategory] = useState("");
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [viewingPrompt, setViewingPrompt] = useState<Prompt | null>(null);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [communities, setCommunities] = useState<Community[]>([]);
+  const [selectedCommunityToShare, setSelectedCommunityToShare] = useState<
+    number | null
+  >(null);
+  const [shareLoading, setShareLoading] = useState(false);
+  const [shareSuccess, setShareSuccess] = useState(false);
 
   // Form states
   const [formData, setFormData] = useState({
@@ -88,6 +114,55 @@ const Dashboard = () => {
       },
     ];
     setPrompts(demoPrompts);
+  }, []);
+
+  // Fetch communities for sharing
+  useEffect(() => {
+    // In a real app, fetch from API
+    // Using mock data similar to CommunitiesPage
+    const mockCommunities: Community[] = [
+      {
+        id: 1,
+        name: "AI Enthusiasts",
+        description:
+          "A community for AI enthusiasts to share and discuss the latest AI trends and tools.",
+        members: 2453,
+        joined: true,
+        icon: "🤖",
+        posts: [],
+      },
+      {
+        id: 2,
+        name: "Prompt Crafters",
+        description:
+          "Share your best prompts and collaborate with others to create better results.",
+        members: 1856,
+        joined: true,
+        icon: "✍️",
+        posts: [],
+      },
+      {
+        id: 3,
+        name: "Tech Innovations",
+        description:
+          "Discussing the latest tech innovations and their implications.",
+        members: 3241,
+        joined: true,
+        icon: "💡",
+        posts: [],
+      },
+      {
+        id: 4,
+        name: "Developersworld",
+        description:
+          "A community for developers to share knowledge and collaborate.",
+        members: 4521,
+        joined: true,
+        icon: "👨‍💻",
+        posts: [],
+      },
+    ];
+    setCommunities(mockCommunities);
   }, []);
 
   // Filtered prompts based on search, category and tags
@@ -232,6 +307,88 @@ const Dashboard = () => {
     setViewingPrompt(null);
   };
 
+  // Function to handle sharing prompt to community
+  const handleSharePrompt = () => {
+    if (!viewingPrompt || !selectedCommunityToShare) return;
+
+    setShareLoading(true);
+
+    // Find the selected community
+    const selectedCommunity = communities.find(
+      (c) => c.id === selectedCommunityToShare
+    );
+
+    if (!selectedCommunity) {
+      setShareLoading(false);
+      return;
+    }
+
+    // Format the prompt content for sharing
+    const category = categories.find((c) => c.id === viewingPrompt.category);
+    const categoryName = category ? category.name : "General";
+
+    // Create a new post object that matches the format expected by CommunitiesPage
+    const newPost = {
+      id: Date.now(),
+      title: viewingPrompt.title,
+      content: `${
+        viewingPrompt.description
+      }\n\n**Category:** ${categoryName}\n\n**Prompt:**\n\`\`\`\n${
+        viewingPrompt.content
+      }\n\`\`\`${
+        viewingPrompt.output
+          ? `\n\n**Sample Output:**\n${viewingPrompt.output}`
+          : ""
+      }`,
+      author: "current_user", // In a real app, get from auth context
+      authorAvatar: "https://i.pravatar.cc/150?img=8",
+      date: "Just now",
+      likes: 0,
+      comments: 0,
+      mediaFiles: [],
+      tags: viewingPrompt.tags,
+    };
+
+    // Use localStorage to store shared posts (simulating a database)
+    try {
+      // Get existing shared posts from localStorage
+      const sharedPostsJSON =
+        localStorage.getItem("prompt-app:sharedCommunityPosts") || "{}";
+      const sharedPosts = JSON.parse(sharedPostsJSON);
+
+      // Add new post to the appropriate community
+      if (!sharedPosts[selectedCommunityToShare]) {
+        sharedPosts[selectedCommunityToShare] = [];
+      }
+
+      // Add the new post to the beginning of the array
+      sharedPosts[selectedCommunityToShare].unshift(newPost);
+
+      // Save back to localStorage
+      localStorage.setItem(
+        "prompt-app:sharedCommunityPosts",
+        JSON.stringify(sharedPosts)
+      );
+
+      console.log("Sharing prompt to community:", selectedCommunity.name);
+      console.log("Post data:", newPost);
+
+      setShareLoading(false);
+      setShareSuccess(true);
+
+      // Reset after showing success message
+      setTimeout(() => {
+        setShareSuccess(false);
+        setShowShareModal(false);
+        setSelectedCommunityToShare(null);
+      }, 2000);
+    } catch (error) {
+      console.error("Error storing shared post:", error);
+      setShareLoading(false);
+      alert("Failed to share post. Please try again.");
+    }
+  };
+
   // Extract all unique tags from prompts
   const allTags = Array.from(new Set(prompts.flatMap((prompt) => prompt.tags)));
 
@@ -247,13 +404,22 @@ const Dashboard = () => {
           >
             ← Back to Prompts
           </button>
-          <button
-            onClick={() => handleEditPrompt(viewingPrompt)}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-          >
-            <FiEdit size={18} />
-            Edit Prompt
-          </button>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setShowShareModal(true)}
+              className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+            >
+              <FiShare2 size={18} />
+              Share to Community
+            </button>
+            <button
+              onClick={() => handleEditPrompt(viewingPrompt)}
+              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+            >
+              <FiEdit size={18} />
+              Edit Prompt
+            </button>
+          </div>
         </div>
 
         <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -309,6 +475,133 @@ const Dashboard = () => {
             <p>Last Updated: {viewingPrompt.updatedAt.toLocaleDateString()}</p>
           </div>
         </div>
+
+        {/* Share Modal */}
+        {showShareModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+            <div className="bg-white rounded-lg shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
+              <div className="p-4 border-b border-gray-200 sticky top-0 bg-white z-10 flex justify-between items-center">
+                <h3 className="text-lg font-semibold">Share to Community</h3>
+                <button
+                  onClick={() => setShowShareModal(false)}
+                  className="p-1 rounded-full hover:bg-gray-100"
+                >
+                  <FiX size={20} className="text-gray-500" />
+                </button>
+              </div>
+              <div className="p-4">
+                {shareSuccess ? (
+                  <div className="text-center py-6">
+                    <div className="w-16 h-16 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-4">
+                      <svg
+                        className="w-8 h-8 text-green-500"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                    </div>
+                    <h4 className="text-lg font-semibold text-gray-800 mb-1">
+                      Shared Successfully!
+                    </h4>
+                    <p className="text-gray-600">
+                      Your prompt has been shared to the community.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="mb-4">
+                      <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 text-blue-700 text-sm mb-4">
+                        Share your prompt "{viewingPrompt.title}" with a
+                        community to get feedback and help others.
+                      </div>
+                    </div>
+                    <div className="mb-2 text-sm font-medium text-gray-700">
+                      Select a community:
+                    </div>
+                    <div className="max-h-60 overflow-y-auto mb-6 space-y-2">
+                      {communities.map((community) => (
+                        <div
+                          key={community.id}
+                          onClick={() =>
+                            setSelectedCommunityToShare(community.id)
+                          }
+                          className={`flex items-center p-3 rounded-lg cursor-pointer border transition-colors ${
+                            selectedCommunityToShare === community.id
+                              ? "border-blue-500 bg-blue-50"
+                              : "border-gray-200 hover:bg-gray-50"
+                          }`}
+                        >
+                          <div className="mr-3 h-12 w-12 flex items-center justify-center text-3xl bg-gray-100 rounded-lg">
+                            {community.icon}
+                          </div>
+                          <div>
+                            <h4 className="font-medium">{community.name}</h4>
+                            <p className="text-xs text-gray-500">
+                              {community.members.toLocaleString()} members
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex justify-end space-x-3 border-t border-gray-200 pt-4">
+                      <button
+                        onClick={() => setShowShareModal(false)}
+                        className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleSharePrompt}
+                        disabled={!selectedCommunityToShare || shareLoading}
+                        className={`px-6 py-2 bg-blue-600 text-white rounded-lg flex items-center ${
+                          !selectedCommunityToShare || shareLoading
+                            ? "opacity-50 cursor-not-allowed"
+                            : "hover:bg-blue-700 transition-colors"
+                        }`}
+                      >
+                        {shareLoading ? (
+                          <>
+                            <svg
+                              className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                            >
+                              <circle
+                                className="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                strokeWidth="4"
+                              ></circle>
+                              <path
+                                className="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                              ></path>
+                            </svg>
+                            Sharing...
+                          </>
+                        ) : (
+                          "Share Prompt"
+                        )}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -441,11 +734,15 @@ const Dashboard = () => {
               return (
                 <div
                   key={prompt.id}
-                  className="bg-white p-4 rounded-lg border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => handleViewPrompt(prompt)}
+                  className="bg-white p-4 rounded-lg border border-gray-200 hover:shadow-md transition-shadow"
                 >
                   <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-semibold text-lg">{prompt.title}</h3>
+                    <h3
+                      className="font-semibold text-lg cursor-pointer hover:text-blue-600"
+                      onClick={() => handleViewPrompt(prompt)}
+                    >
+                      {prompt.title}
+                    </h3>
                     {category && (
                       <span
                         className="px-2 py-1 text-xs rounded-full whitespace-nowrap"
@@ -459,11 +756,17 @@ const Dashboard = () => {
                     )}
                   </div>
 
-                  <p className="text-gray-600 text-sm mb-3">
+                  <p
+                    className="text-gray-600 text-sm mb-3 cursor-pointer"
+                    onClick={() => handleViewPrompt(prompt)}
+                  >
                     {prompt.description}
                   </p>
 
-                  <div className="mb-3">
+                  <div
+                    className="mb-3 cursor-pointer"
+                    onClick={() => handleViewPrompt(prompt)}
+                  >
                     <div className="text-xs text-gray-500 mb-1">Prompt:</div>
                     <div className="bg-gray-50 p-2 rounded text-sm max-h-16 overflow-hidden">
                       {prompt.content}
@@ -471,7 +774,10 @@ const Dashboard = () => {
                   </div>
 
                   {prompt.output && (
-                    <div className="mb-3">
+                    <div
+                      className="mb-3 cursor-pointer"
+                      onClick={() => handleViewPrompt(prompt)}
+                    >
                       <div className="text-xs text-gray-500 mb-1">
                         Sample Output:
                       </div>
@@ -490,6 +796,25 @@ const Dashboard = () => {
                         {tag}
                       </span>
                     ))}
+                  </div>
+
+                  <div className="flex justify-between items-center mt-4 pt-3 border-t border-gray-100">
+                    <button
+                      onClick={() => handleEditPrompt(prompt)}
+                      className="text-gray-600 hover:text-blue-600 text-sm flex items-center"
+                    >
+                      <FiEdit className="mr-1" /> Edit
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setViewingPrompt(prompt);
+                        setShowShareModal(true);
+                      }}
+                      className="text-gray-600 hover:text-green-600 text-sm flex items-center"
+                    >
+                      <FiShare2 className="mr-1" /> Share
+                    </button>
                   </div>
                 </div>
               );

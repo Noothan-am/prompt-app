@@ -9,6 +9,7 @@ import {
   HiOutlinePhotograph,
   HiOutlineFilm,
   HiTrash,
+  HiRefresh,
 } from "react-icons/hi";
 import { FiMessageSquare, FiHeart, FiEdit } from "react-icons/fi";
 import { AiOutlineAudio } from "react-icons/ai";
@@ -170,6 +171,8 @@ function CommunitiesPage() {
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("hot");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [hasNewPosts, setHasNewPosts] = useState(false);
 
   // Modal states
   const [showCreatePostModal, setShowCreatePostModal] = useState(false);
@@ -202,8 +205,53 @@ function CommunitiesPage() {
   useEffect(() => {
     // In a real app, fetch communities from API
     // We need to cast MOCK_COMMUNITIES to ensure types match up
-    setCommunities(MOCK_COMMUNITIES as Community[]);
+    loadCommunitiesWithSharedPosts();
   }, []);
+
+  // Function to load communities with shared posts from localStorage
+  const loadCommunitiesWithSharedPosts = () => {
+    try {
+      // First, load the base mock communities
+      const baseCommunities = JSON.parse(
+        JSON.stringify(MOCK_COMMUNITIES)
+      ) as Community[];
+
+      // Get shared posts from localStorage
+      const sharedPostsJSON = localStorage.getItem(
+        "prompt-app:sharedCommunityPosts"
+      );
+
+      if (sharedPostsJSON) {
+        const sharedPosts = JSON.parse(sharedPostsJSON);
+
+        // Add shared posts to their respective communities
+        Object.keys(sharedPosts).forEach((communityId) => {
+          const communityIdNum = parseInt(communityId, 10);
+          const communityIndex = baseCommunities.findIndex(
+            (c: Community) => c.id === communityIdNum
+          );
+
+          if (communityIndex !== -1) {
+            // Get the shared posts for this community
+            const communitySharedPosts = sharedPosts[communityId];
+
+            // Add shared posts to the beginning of the community's posts array
+            baseCommunities[communityIndex].posts = [
+              ...communitySharedPosts,
+              ...baseCommunities[communityIndex].posts,
+            ];
+          }
+        });
+      }
+
+      // Update communities state with combined data
+      setCommunities(baseCommunities);
+    } catch (error) {
+      console.error("Error loading communities with shared posts:", error);
+      // Fall back to just mock data if there's an error
+      setCommunities(MOCK_COMMUNITIES as Community[]);
+    }
+  };
 
   // Get posts from selected community or all communities if none selected
   const getPosts = (): PostWithCommunityInfo[] => {
@@ -395,6 +443,83 @@ function CommunitiesPage() {
     setExpandedPostId(expandedPostId === postId ? null : postId);
   };
 
+  // Check for new posts (run every 30 seconds)
+  useEffect(() => {
+    // Initial check
+    checkForNewPosts();
+
+    // Set up interval for checking
+    const intervalId = setInterval(() => {
+      checkForNewPosts();
+    }, 30000); // Check every 30 seconds
+
+    // Clean up interval on component unmount
+    return () => clearInterval(intervalId);
+  }, []);
+
+  // Function to check if there are new posts in localStorage compared to current state
+  const checkForNewPosts = () => {
+    try {
+      const sharedPostsJSON = localStorage.getItem(
+        "prompt-app:sharedCommunityPosts"
+      );
+      if (!sharedPostsJSON) return;
+
+      const sharedPosts = JSON.parse(sharedPostsJSON);
+      let newPostsFound = false;
+
+      // Check if any community has more posts in localStorage than in current state
+      Object.keys(sharedPosts).forEach((communityId) => {
+        const communityIdNum = parseInt(communityId, 10);
+        const community = communities.find((c) => c.id === communityIdNum);
+
+        if (community) {
+          const localStoragePosts = sharedPosts[communityId];
+          // Simple check - if localStorage has posts for this community and they're
+          // different from what we have in state
+          if (localStoragePosts && localStoragePosts.length > 0) {
+            // Check if first post in localStorage is newer than first post in state
+            if (localStoragePosts.length > 0 && community.posts.length > 0) {
+              if (localStoragePosts[0].id !== community.posts[0].id) {
+                newPostsFound = true;
+              }
+            } else if (
+              localStoragePosts.length > 0 &&
+              community.posts.length === 0
+            ) {
+              // Community had no posts but now has some
+              newPostsFound = true;
+            }
+          }
+        }
+      });
+
+      setHasNewPosts(newPostsFound);
+    } catch (error) {
+      console.error("Error checking for new posts:", error);
+    }
+  };
+
+  // Function to manually refresh posts from localStorage
+  const refreshPosts = () => {
+    setIsRefreshing(true);
+    setHasNewPosts(false); // Clear the notification
+
+    try {
+      // Use the same function that loads communities initially
+      loadCommunitiesWithSharedPosts();
+
+      // Show a temporary success message
+      setTimeout(() => {
+        setIsRefreshing(false);
+      }, 1000);
+    } catch (error) {
+      console.error("Error refreshing posts:", error);
+      setIsRefreshing(false);
+      alert("Error refreshing posts. Please try again.");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 py-6">
@@ -445,7 +570,26 @@ function CommunitiesPage() {
           <div className="lg:sticky lg:top-6 lg:self-start bg-white rounded-lg shadow-sm border border-gray-200 h-fit overflow-hidden">
             {/* Community header */}
             <div className="p-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold">Communities</h2>
+              <div className="flex justify-between items-center">
+                <h2 className="text-lg font-semibold">Communities</h2>
+                <button
+                  onClick={refreshPosts}
+                  disabled={isRefreshing}
+                  className={`p-1.5 rounded-full relative ${
+                    isRefreshing
+                      ? "text-gray-400"
+                      : "text-gray-600 hover:bg-gray-100"
+                  }`}
+                  title="Refresh communities"
+                >
+                  <HiRefresh
+                    className={`w-5 h-5 ${isRefreshing ? "animate-spin" : ""}`}
+                  />
+                  {hasNewPosts && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 rounded-full w-3 h-3"></span>
+                  )}
+                </button>
+              </div>
               <div className="mt-3 relative">
                 <HiOutlineSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                 <input
@@ -491,7 +635,13 @@ function CommunitiesPage() {
                 filteredCommunities.map((community) => (
                   <div
                     key={community.id}
-                    className="p-4 border rounded-lg shadow-sm bg-white"
+                    className={`p-4 border rounded-lg shadow-sm mb-3 transition-colors ${
+                      selectedCommunity === community.id
+                        ? "bg-blue-50 border-blue-300"
+                        : "bg-white hover:bg-gray-50"
+                    }`}
+                    onClick={() => setSelectedCommunity(community.id)}
+                    style={{ cursor: "pointer" }}
                   >
                     <div className="flex items-center mb-3">
                       <div className="mr-3 h-12 w-12 flex items-center justify-center text-3xl bg-gray-100 rounded-lg">
@@ -500,9 +650,24 @@ function CommunitiesPage() {
                       <div>
                         <Link
                           to={`/community/${community.id}`}
-                          className="text-xl font-semibold hover:text-blue-600 transition"
+                          className="text-xl font-semibold hover:text-blue-600 transition flex items-center"
+                          onClick={(e) => e.stopPropagation()} // Prevent triggering parent onClick
                         >
                           {community.name}
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-4 w-4 ml-1 text-gray-400"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                            />
+                          </svg>
                         </Link>
                         <div className="flex mt-1">
                           <p className="text-sm text-gray-500">
@@ -536,67 +701,119 @@ function CommunitiesPage() {
           <div className="lg:col-span-3 space-y-4 overflow-y-auto">
             {/* Sorting options */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => setSortBy("hot")}
-                    className={`px-4 py-2 rounded-full text-sm font-medium ${
-                      sortBy === "hot"
-                        ? "bg-blue-100 text-blue-700"
-                        : "text-gray-600 hover:bg-gray-100"
-                    }`}
-                  >
-                    Hot
-                  </button>
-                  <button
-                    onClick={() => setSortBy("new")}
-                    className={`px-4 py-2 rounded-full text-sm font-medium ${
-                      sortBy === "new"
-                        ? "bg-blue-100 text-blue-700"
-                        : "text-gray-600 hover:bg-gray-100"
-                    }`}
-                  >
-                    New
-                  </button>
-                  <button
-                    onClick={() => setSortBy("top")}
-                    className={`px-4 py-2 rounded-full text-sm font-medium ${
-                      sortBy === "top"
-                        ? "bg-blue-100 text-blue-700"
-                        : "text-gray-600 hover:bg-gray-100"
-                    }`}
-                  >
-                    Top
-                  </button>
+              <div className="flex flex-col space-y-3">
+                {selectedCommunity !== null && (
+                  <div className="flex items-center justify-between mb-2">
+                    <h2 className="text-xl font-semibold">
+                      Posts in{" "}
+                      {
+                        communities.find((c) => c.id === selectedCommunity)
+                          ?.name
+                      }
+                    </h2>
+                    <button
+                      onClick={refreshPosts}
+                      disabled={isRefreshing}
+                      className={`flex items-center text-sm relative ${
+                        isRefreshing
+                          ? "text-gray-400"
+                          : "text-blue-600 hover:text-blue-800"
+                      }`}
+                      title="Refresh posts"
+                    >
+                      <HiRefresh
+                        className={`w-5 h-5 mr-1 ${
+                          isRefreshing ? "animate-spin" : ""
+                        }`}
+                      />
+                      {isRefreshing ? "Refreshing..." : "Refresh"}
+                      {hasNewPosts && (
+                        <span className="absolute -top-1 -right-1 bg-red-500 rounded-full w-3 h-3"></span>
+                      )}
+                    </button>
+                  </div>
+                )}
+                <div className="flex items-center justify-between">
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => setSortBy("hot")}
+                      className={`px-4 py-2 rounded-full text-sm font-medium ${
+                        sortBy === "hot"
+                          ? "bg-blue-100 text-blue-700"
+                          : "text-gray-600 hover:bg-gray-100"
+                      }`}
+                    >
+                      Hot
+                    </button>
+                    <button
+                      onClick={() => setSortBy("new")}
+                      className={`px-4 py-2 rounded-full text-sm font-medium ${
+                        sortBy === "new"
+                          ? "bg-blue-100 text-blue-700"
+                          : "text-gray-600 hover:bg-gray-100"
+                      }`}
+                    >
+                      New
+                    </button>
+                    <button
+                      onClick={() => setSortBy("top")}
+                      className={`px-4 py-2 rounded-full text-sm font-medium ${
+                        sortBy === "top"
+                          ? "bg-blue-100 text-blue-700"
+                          : "text-gray-600 hover:bg-gray-100"
+                      }`}
+                    >
+                      Top
+                    </button>
+                  </div>
+                  {selectedCommunity !== null && (
+                    <button
+                      onClick={() => setShowCreatePostModal(true)}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition flex items-center"
+                    >
+                      <FiEdit className="w-4 h-4 mr-2" />
+                      Create Post
+                    </button>
+                  )}
                 </div>
-                <button
-                  onClick={() => setShowCreatePostModal(true)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition flex items-center"
-                >
-                  <FiEdit className="w-4 h-4 mr-2" />
-                  Create Post
-                </button>
               </div>
             </div>
 
             {/* No posts message */}
             {getPosts().length === 0 && (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
-                <div className="text-2xl mb-2">📭</div>
-                <h3 className="text-xl font-bold text-gray-700 mb-2">
-                  No posts to display
-                </h3>
-                <p className="text-gray-600 mb-4">
-                  {selectedCommunity
-                    ? "Be the first to post in this community!"
-                    : "Join some communities to see posts here!"}
-                </p>
-                <button
-                  onClick={() => setShowCreatePostModal(true)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                >
-                  Create a post
-                </button>
+                {selectedCommunity === null ? (
+                  <>
+                    <div className="text-2xl mb-2">👈</div>
+                    <h3 className="text-xl font-bold text-gray-700 mb-2">
+                      Select a community to view posts
+                    </h3>
+                    <p className="text-gray-600 mb-4">
+                      Click on a community from the sidebar to view its posts
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-2xl mb-2">📝</div>
+                    <h3 className="text-xl font-bold text-gray-700 mb-2">
+                      No posts in this community yet
+                    </h3>
+                    <p className="text-gray-600 mb-4">
+                      Be the first to start a conversation in{" "}
+                      {
+                        communities.find((c) => c.id === selectedCommunity)
+                          ?.name
+                      }
+                      !
+                    </p>
+                    <button
+                      onClick={() => setShowCreatePostModal(true)}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                    >
+                      Create the first post
+                    </button>
+                  </>
+                )}
               </div>
             )}
 
@@ -880,7 +1097,14 @@ function CommunitiesPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-4 border-b border-gray-200 sticky top-0 bg-white z-10 flex justify-between items-center">
-              <h3 className="text-lg font-semibold">Create Post</h3>
+              <h3 className="text-lg font-semibold">
+                Create Post
+                {selectedCommunity
+                  ? ` in ${
+                      communities.find((c) => c.id === selectedCommunity)?.name
+                    }`
+                  : ""}
+              </h3>
               <button
                 onClick={() => setShowCreatePostModal(false)}
                 className="p-1 rounded-full hover:bg-gray-100"

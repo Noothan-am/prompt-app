@@ -23,6 +23,26 @@ import {
 } from "react-icons/bs";
 import { AiOutlineAudio } from "react-icons/ai";
 
+interface MediaFile {
+  id: string;
+  url: string;
+  type: "image" | "video";
+  filename?: string;
+}
+
+interface SharedPost {
+  id: number;
+  title: string;
+  content: string;
+  author: string;
+  authorAvatar: string;
+  date: string;
+  likes: number;
+  comments: number;
+  mediaFiles: MediaFile[];
+  tags?: string[];
+}
+
 interface Post {
   id: number;
   title: string;
@@ -91,6 +111,63 @@ const RedditStyleCommunityPage: React.FC = () => {
   );
   const [sortBy, setSortBy] = useState<string>("hot");
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [hasNewPosts, setHasNewPosts] = useState<boolean>(false);
+
+  // Load shared posts from localStorage
+  const loadSharedPosts = () => {
+    try {
+      // Get shared posts from localStorage
+      const sharedPostsJSON = localStorage.getItem(
+        "prompt-app:sharedCommunityPosts"
+      );
+
+      if (sharedPostsJSON && id) {
+        const sharedPosts = JSON.parse(sharedPostsJSON);
+        const communityIdNum = parseInt(id, 10);
+
+        // Check if there are shared posts for this community
+        if (
+          sharedPosts[communityIdNum] &&
+          sharedPosts[communityIdNum].length > 0
+        ) {
+          return sharedPosts[communityIdNum] as SharedPost[];
+        }
+      }
+      return [];
+    } catch (error) {
+      console.error("Error loading shared posts from localStorage:", error);
+      return [];
+    }
+  };
+
+  // Convert shared posts to the format expected by this component
+  const convertSharedPostsToPostFormat = (
+    sharedPosts: SharedPost[]
+  ): Post[] => {
+    return sharedPosts.map((post) => ({
+      id: post.id,
+      title: post.title,
+      content: post.content,
+      author: post.author || "current_user",
+      authorAvatar:
+        post.authorAvatar || "https://randomuser.me/api/portraits/men/32.jpg",
+      timestamp: post.date || "Just now",
+      upvotes: post.likes || 0,
+      comments: post.comments || 0,
+      tags: post.tags || [],
+      isUpvoted: false,
+      isDownvoted: false,
+      isPinned: false,
+      media:
+        post.mediaFiles && post.mediaFiles.length > 0
+          ? {
+              type: post.mediaFiles[0].type,
+              url: post.mediaFiles[0].url,
+            }
+          : undefined,
+    }));
+  };
 
   useEffect(() => {
     // Simulating API fetch
@@ -210,12 +287,110 @@ const RedditStyleCommunityPage: React.FC = () => {
         ],
       };
 
+      // Load shared posts from localStorage
+      const sharedPosts = loadSharedPosts();
+      const convertedSharedPosts = convertSharedPostsToPostFormat(sharedPosts);
+
+      // Add shared posts to the mock data
+      if (convertedSharedPosts.length > 0) {
+        // Update the mock data with shared posts (add to the beginning)
+        mockData.posts = [...convertedSharedPosts, ...mockData.posts];
+
+        // Update total posts count
+        mockData.totalPosts = mockData.posts.length;
+      }
+
       setCommunityData(mockData);
       setIsLoading(false);
     };
 
     fetchCommunityData();
   }, [id]);
+
+  // Function to refresh posts from localStorage
+  const refreshPosts = () => {
+    setIsRefreshing(true);
+    setHasNewPosts(false);
+
+    try {
+      if (communityData) {
+        // Get the original mock posts (non-shared posts)
+        const originalPosts = communityData.posts.filter(
+          (post) => [1, 2, 3].includes(post.id) // Original mock posts had IDs 1, 2, 3
+        );
+
+        // Load fresh shared posts
+        const sharedPosts = loadSharedPosts();
+        const convertedSharedPosts =
+          convertSharedPostsToPostFormat(sharedPosts);
+
+        // Update with fresh data
+        setCommunityData((prev) => {
+          if (!prev) return prev;
+
+          return {
+            ...prev,
+            posts: [...convertedSharedPosts, ...originalPosts],
+            totalPosts: convertedSharedPosts.length + originalPosts.length,
+          };
+        });
+      }
+
+      // Show a temporary success message
+      setTimeout(() => {
+        setIsRefreshing(false);
+      }, 1000);
+    } catch (error) {
+      console.error("Error refreshing posts:", error);
+      setIsRefreshing(false);
+    }
+  };
+
+  // Check for new posts periodically
+  useEffect(() => {
+    // Function to check for new shared posts
+    const checkForNewSharedPosts = () => {
+      if (!communityData || !id) return;
+
+      try {
+        const sharedPostsJSON = localStorage.getItem(
+          "prompt-app:sharedCommunityPosts"
+        );
+        if (!sharedPostsJSON) return;
+
+        const sharedPosts = JSON.parse(sharedPostsJSON);
+        const communityIdNum = parseInt(id, 10);
+
+        // If there are shared posts for this community
+        if (
+          sharedPosts[communityIdNum] &&
+          sharedPosts[communityIdNum].length > 0
+        ) {
+          // Check if we have a new post (comparing first post ID)
+          const firstSharedPostId = sharedPosts[communityIdNum][0].id;
+
+          // Find if this post is already in our displayed posts
+          const postExists = communityData.posts.some(
+            (post) => post.id === firstSharedPostId
+          );
+
+          if (!postExists) {
+            setHasNewPosts(true);
+          }
+        }
+      } catch (error) {
+        console.error("Error checking for new posts:", error);
+      }
+    };
+
+    // Check initially
+    checkForNewSharedPosts();
+
+    // Set up interval for periodic checks
+    const intervalId = setInterval(checkForNewSharedPosts, 30000); // Every 30 seconds
+
+    return () => clearInterval(intervalId);
+  }, [communityData, id]);
 
   const handleVote = (postId: number, direction: "up" | "down") => {
     if (!communityData) return;
@@ -341,36 +516,64 @@ const RedditStyleCommunityPage: React.FC = () => {
 
           {/* Sort Options */}
           <div className="bg-white rounded-md p-2 flex items-center shadow border border-gray-200">
-            <button
-              className={`flex items-center px-3 py-1.5 rounded-full text-sm font-medium mr-2 ${
-                sortBy === "hot"
-                  ? "bg-blue-100 text-blue-800"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
-              onClick={() => setSortBy("hot")}
-            >
-              <BsStars className="mr-1.5" /> Hot
-            </button>
-            <button
-              className={`flex items-center px-3 py-1.5 rounded-full text-sm font-medium mr-2 ${
-                sortBy === "new"
-                  ? "bg-blue-100 text-blue-800"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
-              onClick={() => setSortBy("new")}
-            >
-              <HiOutlineRefresh className="mr-1.5" /> New
-            </button>
-            <button
-              className={`flex items-center px-3 py-1.5 rounded-full text-sm font-medium ${
-                sortBy === "top"
-                  ? "bg-blue-100 text-blue-800"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
-              onClick={() => setSortBy("top")}
-            >
-              <BsFilterLeft className="mr-1.5" /> Top
-            </button>
+            <div className="flex items-center flex-shrink-0 space-x-4 pr-3">
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setSortBy("hot")}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium ${
+                    sortBy === "hot"
+                      ? "bg-blue-50 text-blue-600"
+                      : "text-gray-600"
+                  }`}
+                >
+                  <BsStars className="inline-block mr-1.5" /> Hot
+                </button>
+                <button
+                  onClick={() => setSortBy("new")}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium ${
+                    sortBy === "new"
+                      ? "bg-blue-50 text-blue-600"
+                      : "text-gray-600"
+                  }`}
+                >
+                  New
+                </button>
+                <button
+                  onClick={() => setSortBy("top")}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium ${
+                    sortBy === "top"
+                      ? "bg-blue-50 text-blue-600"
+                      : "text-gray-600"
+                  }`}
+                >
+                  Top
+                </button>
+                {/* Add Refresh Button */}
+                <button
+                  onClick={refreshPosts}
+                  disabled={isRefreshing}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium relative ${
+                    isRefreshing
+                      ? "text-gray-400"
+                      : "text-blue-600 hover:bg-blue-50"
+                  }`}
+                  title="Refresh posts"
+                >
+                  <HiOutlineRefresh
+                    className={`inline-block mr-1.5 ${
+                      isRefreshing ? "animate-spin" : ""
+                    }`}
+                  />
+                  {isRefreshing ? "Refreshing" : "Refresh"}
+                  {hasNewPosts && !isRefreshing && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 rounded-full w-2 h-2"></span>
+                  )}
+                </button>
+              </div>
+              <button className="flex items-center text-gray-600 hover:bg-gray-100 p-1.5 rounded-full">
+                <BsFilterLeft size={20} />
+              </button>
+            </div>
           </div>
 
           {/* Posts */}
@@ -403,9 +606,59 @@ const RedditStyleCommunityPage: React.FC = () => {
 
                 {/* Post Content */}
                 <h2 className="text-lg font-medium mb-2">{post.title}</h2>
-                <p className="text-gray-700 text-sm mb-3 line-clamp-3">
-                  {post.content}
-                </p>
+                <div className="text-gray-700 text-sm mb-3">
+                  {post.content.includes("**Category:**") ? (
+                    // This is likely a shared prompt with special formatting
+                    <div>
+                      {/* Display the first paragraph (description) */}
+                      <p className="mb-3">{post.content.split("\n\n")[0]}</p>
+
+                      {/* Look for Category section */}
+                      {post.content.includes("**Category:**") && (
+                        <div className="mb-3">
+                          <span className="font-semibold">Category: </span>
+                          <span className="inline-block bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs font-medium">
+                            {post.content
+                              .split("**Category:**")[1]
+                              .split("\n\n")[0]
+                              .trim()}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Look for Prompt section */}
+                      {post.content.includes("**Prompt:**") && (
+                        <div className="mb-3">
+                          <p className="font-semibold text-gray-700 mb-1">
+                            Prompt:
+                          </p>
+                          <div className="bg-gray-50 border border-gray-200 rounded-md p-3 font-mono text-xs whitespace-pre-wrap overflow-auto">
+                            {post.content
+                              .split("**Prompt:**")[1]
+                              .split("```")[1]
+                              .split("```")[0]
+                              .trim()}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Look for Sample Output section */}
+                      {post.content.includes("**Sample Output:**") && (
+                        <div className="mb-3">
+                          <p className="font-semibold text-gray-700 mb-1">
+                            Sample Output:
+                          </p>
+                          <div className="bg-gray-50 border border-gray-200 rounded-md p-3 text-xs whitespace-pre-wrap overflow-auto">
+                            {post.content.split("**Sample Output:**")[1].trim()}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    // Regular post content
+                    <p className="line-clamp-3">{post.content}</p>
+                  )}
+                </div>
 
                 {/* Post Media */}
                 {post.media && (
