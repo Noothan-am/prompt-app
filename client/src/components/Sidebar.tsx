@@ -12,6 +12,7 @@ import { IoChevronDownOutline } from "react-icons/io5";
 import { HiMenuAlt2 } from "react-icons/hi";
 import { FiFileText, FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import { HiUserGroup } from "react-icons/hi";
+import { IoNotificationsOutline } from "react-icons/io5";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -180,6 +181,17 @@ function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
               >
                 <IoSettingsOutline className="w-6 h-6 flex-shrink-0" />
                 {!isCollapsed && <span className="ml-4">Settings</span>}
+              </Link>
+
+              {/* Notification Demo */}
+              <Link
+                to="/notifications"
+                className={`flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg ${
+                  isCollapsed ? "justify-center" : "text-lg"
+                }`}
+              >
+                <IoNotificationsOutline className="w-6 h-6 flex-shrink-0" />
+                {!isCollapsed && <span className="ml-4">Notifications</span>}
               </Link>
             </div>
           </div>
