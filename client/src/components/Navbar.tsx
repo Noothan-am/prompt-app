@@ -7,6 +7,7 @@ import {
   IoCloseOutline,
 } from "react-icons/io5";
 import { BsChatDots } from "react-icons/bs";
+import { CgProfile } from "react-icons/cg";
 import ChatModal from "./ChatModal";
 
 interface NavbarProps {
@@ -66,12 +67,15 @@ function Navbar({ toggleSidebar }: NavbarProps) {
             <IoNotificationsOutline className="w-5 h-5" />
             <span className="absolute top-0 right-0 flex h-2 w-2 rounded-full bg-red-500"></span>
           </button>
-          <button
-            className="flex items-center text-gray-700 hover:bg-gray-100 rounded-full"
+          <Link
+            to="/profile"
+            className="flex items-center text-gray-700 hover:bg-gray-100 rounded-full p-1"
             aria-label="Profile"
           >
-            <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
-          </button>
+            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+              <CgProfile className="w-5 h-5" />
+            </div>
+          </Link>
         </div>
       </nav>
 
@@ -91,6 +95,13 @@ function Navbar({ toggleSidebar }: NavbarProps) {
           <IoNotificationsOutline className="w-5 h-5" />
           <span className="absolute top-0 right-0 flex h-2 w-2 rounded-full bg-red-500"></span>
         </button>
+        <Link
+          to="/profile"
+          className="p-2 text-gray-700 hover:bg-gray-100 rounded-full"
+          aria-label="Profile"
+        >
+          <CgProfile className="w-5 h-5" />
+        </Link>
       </div>
 
       {/* Chat Modal */}
