@@ -1,6 +1,11 @@
-const express = require("express");
-const cors = require("cors");
-const dotenv = require("dotenv");
+import express, {
+  Request,
+  Response,
+  NextFunction,
+  ErrorRequestHandler,
+} from "express";
+import cors from "cors";
+import dotenv from "dotenv";
 
 // Load environment variables
 dotenv.config();
@@ -12,15 +17,22 @@ app.use(cors());
 app.use(express.json());
 
 // Basic route
-app.get("/", (req, res) => {
+app.get("/", (req: Request, res: Response) => {
   res.json({ message: "Welcome to Prompt App API" });
 });
 
 // Error handling middleware
-app.use((err, req, res, next) => {
+const errorHandler: ErrorRequestHandler = (
+  err: Error,
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   console.error(err.stack);
   res.status(500).json({ message: "Something went wrong!" });
-});
+};
+
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 
