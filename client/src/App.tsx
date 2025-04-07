@@ -12,6 +12,7 @@ import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import NotificationDemo from "./pages/NotificationDemo";
 import AllNotificationsPage from "./pages/AllNotificationsPage";
+import CommunityManagerDashboard from "./pages/CommunityManagerDashboard";
 import { NotificationProvider } from "./context/NotificationContext";
 
 function App() {
@@ -82,6 +83,10 @@ function App() {
                       <Route
                         path="/notifications"
                         element={<AllNotificationsPage />}
+                      />
+                      <Route
+                        path="/community-manager"
+                        element={<CommunityManagerDashboard />}
                       />
                     </Routes>
                   </main>

@@ -10,7 +10,12 @@ import { IoSettingsOutline } from "react-icons/io5";
 import { IoLogOutOutline } from "react-icons/io5";
 import { IoChevronDownOutline } from "react-icons/io5";
 import { HiMenuAlt2 } from "react-icons/hi";
-import { FiFileText, FiChevronLeft, FiChevronRight } from "react-icons/fi";
+import {
+  FiFileText,
+  FiChevronLeft,
+  FiChevronRight,
+  FiBarChart2,
+} from "react-icons/fi";
 import { HiUserGroup } from "react-icons/hi";
 import { IoNotificationsOutline } from "react-icons/io5";
 
@@ -103,6 +108,19 @@ function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
               >
                 <HiUserGroup className="w-6 h-6 flex-shrink-0" />
                 {!isCollapsed && <span className="ml-4">Communities</span>}
+              </Link>
+
+              {/* Community Manager Dashboard */}
+              <Link
+                to="/community-manager"
+                className={`flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg ${
+                  isCollapsed ? "justify-center" : "text-lg"
+                }`}
+              >
+                <FiBarChart2 className="w-6 h-6 flex-shrink-0" />
+                {!isCollapsed && (
+                  <span className="ml-4">Community Manager</span>
+                )}
               </Link>
 
               {/* E-Commerce with dropdown */}
