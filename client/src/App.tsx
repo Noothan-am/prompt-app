@@ -14,6 +14,7 @@ import NotificationDemo from "./pages/NotificationDemo";
 import AllNotificationsPage from "./pages/AllNotificationsPage";
 import CommunityManagerDashboard from "./pages/CommunityManagerDashboard";
 import { NotificationProvider } from "./context/NotificationContext";
+import { AuthProvider } from "./context/AuthContext";
 
 function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -40,63 +41,65 @@ function App() {
   }, []);
 
   return (
-    <NotificationProvider>
-      <Router>
-        <Routes>
-          {/* Auth routes without navbar/sidebar */}
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignupPage />} />
+    <AuthProvider>
+      <NotificationProvider>
+        <Router>
+          <Routes>
+            {/* Auth routes without navbar/sidebar */}
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignupPage />} />
 
-          {/* Routes with navbar/sidebar */}
-          <Route
-            path="*"
-            element={
-              <div className="min-h-screen bg-white flex flex-col">
-                <Navbar toggleSidebar={toggleSidebar} />
-                <div className="flex flex-1 pt-[3.5rem] md:pt-[4rem]">
-                  <Sidebar
-                    isOpen={isSidebarOpen}
-                    toggleSidebar={toggleSidebar}
-                  />
-                  <main className="flex-1 overflow-y-auto bg-gray-50">
-                    <Routes>
-                      <Route path="/" element={<HomePage />} />
-                      <Route path="/dashboard" element={<Dashboard />} />
-                      <Route path="/prompts" element={<Dashboard />} />
-                      <Route
-                        path="/communities"
-                        element={<CommunitiesPage />}
-                      />
-                      <Route
-                        path="/community/:id"
-                        element={<RedditStyleCommunityPage />}
-                      />
-                      <Route path="/profile" element={<UserProfile />} />
-                      <Route
-                        path="/profile/:username"
-                        element={<UserProfile />}
-                      />
-                      <Route
-                        path="/notifications-demo"
-                        element={<NotificationDemo />}
-                      />
-                      <Route
-                        path="/notifications"
-                        element={<AllNotificationsPage />}
-                      />
-                      <Route
-                        path="/community-manager"
-                        element={<CommunityManagerDashboard />}
-                      />
-                    </Routes>
-                  </main>
+            {/* Routes with navbar/sidebar */}
+            <Route
+              path="*"
+              element={
+                <div className="min-h-screen bg-white flex flex-col">
+                  <Navbar toggleSidebar={toggleSidebar} />
+                  <div className="flex flex-1 pt-[3.5rem] md:pt-[4rem]">
+                    <Sidebar
+                      isOpen={isSidebarOpen}
+                      toggleSidebar={toggleSidebar}
+                    />
+                    <main className="flex-1 overflow-y-auto bg-gray-50">
+                      <Routes>
+                        <Route path="/" element={<HomePage />} />
+                        <Route path="/dashboard" element={<Dashboard />} />
+                        <Route path="/prompts" element={<Dashboard />} />
+                        <Route
+                          path="/communities"
+                          element={<CommunitiesPage />}
+                        />
+                        <Route
+                          path="/community/:id"
+                          element={<RedditStyleCommunityPage />}
+                        />
+                        <Route path="/profile" element={<UserProfile />} />
+                        <Route
+                          path="/profile/:username"
+                          element={<UserProfile />}
+                        />
+                        <Route
+                          path="/notifications-demo"
+                          element={<NotificationDemo />}
+                        />
+                        <Route
+                          path="/notifications"
+                          element={<AllNotificationsPage />}
+                        />
+                        <Route
+                          path="/community-manager"
+                          element={<CommunityManagerDashboard />}
+                        />
+                      </Routes>
+                    </main>
+                  </div>
                 </div>
-              </div>
-            }
-          />
-        </Routes>
-      </Router>
-    </NotificationProvider>
+              }
+            />
+          </Routes>
+        </Router>
+      </NotificationProvider>
+    </AuthProvider>
   );
 }
 

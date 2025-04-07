@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   IoSearchOutline,
@@ -11,6 +11,8 @@ import { CgProfile } from "react-icons/cg";
 import ChatModal from "./ChatModal";
 import { useNotificationDemo } from "../hooks/useNotificationDemo";
 import NotificationDropdown from "./NotificationDropdown";
+import ProfileDropdown from "./ProfileDropdown";
+import { useAuth } from "../context/AuthContext";
 
 interface NavbarProps {
   toggleSidebar: () => void;
@@ -57,8 +59,10 @@ function Navbar({ toggleSidebar }: NavbarProps) {
   const [showChatModal, setShowChatModal] = useState(false);
   const [showNotificationDropdown, setShowNotificationDropdown] =
     useState(false);
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [notifications, setNotifications] = useState(mockNotifications);
   const { showInfo, showSuccess } = useNotificationDemo();
+  const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
 
   const toggleChatModal = () => {
@@ -67,6 +71,68 @@ function Navbar({ toggleSidebar }: NavbarProps) {
 
   const toggleNotificationDropdown = () => {
     setShowNotificationDropdown(!showNotificationDropdown);
+  };
+
+  // Close dropdowns when clicking outside but maintain separate event handlers
+  // for each dropdown to avoid interference with navigation
+  useEffect(() => {
+    const handleClickOutsideProfile = (event: MouseEvent) => {
+      // Don't close if the click originated from a dropdown button
+      const target = event.target as HTMLElement;
+      if (target.closest('[data-dropdown-toggle="profile"]')) {
+        return;
+      }
+
+      // Close profile dropdown when clicking outside
+      if (showProfileDropdown && !target.closest('[data-dropdown="profile"]')) {
+        setShowProfileDropdown(false);
+      }
+    };
+
+    if (showProfileDropdown) {
+      document.addEventListener("mousedown", handleClickOutsideProfile);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutsideProfile);
+    };
+  }, [showProfileDropdown]);
+
+  // Handle notification dropdown separately
+  useEffect(() => {
+    const handleClickOutsideNotification = (event: MouseEvent) => {
+      // Don't close if the click originated from a notification button
+      const target = event.target as HTMLElement;
+      if (target.closest('[data-dropdown-toggle="notification"]')) {
+        return;
+      }
+
+      // Close notification dropdown when clicking outside
+      if (
+        showNotificationDropdown &&
+        !target.closest('[data-dropdown="notification"]')
+      ) {
+        setShowNotificationDropdown(false);
+      }
+    };
+
+    if (showNotificationDropdown) {
+      document.addEventListener("mousedown", handleClickOutsideNotification);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutsideNotification);
+    };
+  }, [showNotificationDropdown]);
+
+  const toggleProfileDropdown = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent event bubbling
+    setShowProfileDropdown(!showProfileDropdown);
+
+    // Close notification dropdown if open
+    if (showNotificationDropdown) {
+      setShowNotificationDropdown(false);
+    }
   };
 
   // Function to navigate to all notifications page
@@ -183,15 +249,30 @@ function Navbar({ toggleSidebar }: NavbarProps) {
               onNotificationClick={handleNotificationClick}
             />
           </div>
-          <Link
-            to="/profile"
-            className="flex items-center text-gray-700 hover:bg-gray-100 rounded-full p-1"
-            aria-label="Profile"
-          >
-            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-              <CgProfile className="w-5 h-5" />
+          <div className="relative">
+            <button
+              onClick={toggleProfileDropdown}
+              className="flex items-center text-gray-700 hover:bg-gray-100 rounded-full p-1"
+              aria-label="Profile"
+              data-dropdown-toggle="profile"
+            >
+              <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                {user ? (
+                  <span className="text-xs font-semibold">
+                    {user.name.charAt(0)}
+                  </span>
+                ) : (
+                  <CgProfile className="w-5 h-5" />
+                )}
+              </div>
+            </button>
+            <div data-dropdown="profile">
+              <ProfileDropdown
+                isOpen={showProfileDropdown}
+                onClose={() => setShowProfileDropdown(false)}
+              />
             </div>
-          </Link>
+          </div>
         </div>
       </nav>
 
@@ -228,13 +309,33 @@ function Navbar({ toggleSidebar }: NavbarProps) {
             onNotificationClick={handleNotificationClick}
           />
         </div>
-        <Link
-          to="/profile"
-          className="p-2 text-gray-700 hover:bg-gray-100 rounded-full"
-          aria-label="Profile"
-        >
-          <CgProfile className="w-5 h-5" />
-        </Link>
+        <div className="relative">
+          <button
+            onClick={toggleProfileDropdown}
+            className="p-2 text-gray-700 hover:bg-gray-100 rounded-full"
+            aria-label="Profile"
+            data-dropdown-toggle="profile"
+          >
+            {user ? (
+              <div className="w-7 h-7 bg-gray-200 rounded-full flex items-center justify-center">
+                <span className="text-xs font-semibold">
+                  {user.name.charAt(0)}
+                </span>
+              </div>
+            ) : (
+              <CgProfile className="w-5 h-5" />
+            )}
+          </button>
+          <div
+            className="absolute bottom-14 right-0 transform translate-y-2"
+            data-dropdown="profile"
+          >
+            <ProfileDropdown
+              isOpen={showProfileDropdown}
+              onClose={() => setShowProfileDropdown(false)}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Chat Modal */}
