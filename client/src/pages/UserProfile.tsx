@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import {
   FiUser,
   FiHeart,
@@ -8,6 +9,7 @@ import {
   FiThumbsUp,
   FiThumbsDown,
   FiMessageSquare,
+  FiEdit2,
 } from "react-icons/fi";
 
 // Define TypeScript interfaces
@@ -308,7 +310,12 @@ const UserProfile = () => {
                   </div>
 
                   <div className="mt-4 sm:mt-0">
-                    <button className="bg-blue-600 text-white px-4 py-2 rounded-md font-medium hover:bg-blue-700 transition">
+                    <Link to="/edit-profile">
+                      <button className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-md font-medium hover:bg-blue-700 transition mr-2">
+                        <FiEdit2 className="mr-2" /> Edit Profile
+                      </button>
+                    </Link>
+                    <button className="bg-blue-600 text-white px-4 py-2 rounded-md font-medium hover:bg-blue-700 transition mt-2 sm:mt-0">
                       Follow
                     </button>
                   </div>

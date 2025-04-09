@@ -1,4 +1,4 @@
-import { initializeApp } from "firebase-admin/app";
+import { initializeApp, cert } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
 import { onRequest, onCall, HttpsError } from "firebase-functions/v2/https";
@@ -9,9 +9,34 @@ import express, {
   ErrorRequestHandler,
 } from "express";
 import cors from "cors";
+import dotenv from "dotenv";
+
+// Load environment variables
+dotenv.config();
 
 // Initialize Firebase
-initializeApp();
+const firebaseConfig = {
+  // When running as Firebase Function, we use the default config
+  // For local development, these values can be set in .env
+  projectId: process.env.FIREBASE_PROJECT_ID,
+  clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+  privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+};
+
+// Initialize with default credentials when running as a Firebase function
+// Or use the provided credentials for local development
+if (
+  process.env.NODE_ENV === "development" &&
+  firebaseConfig.projectId &&
+  firebaseConfig.clientEmail &&
+  firebaseConfig.privateKey
+) {
+  initializeApp({
+    credential: cert(firebaseConfig as any),
+  });
+} else {
+  initializeApp();
+}
 
 // Get Firebase services
 const db = getFirestore();
@@ -19,6 +44,7 @@ const auth = getAuth();
 
 // Express app
 const app = express();
+const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors({ origin: true }));
@@ -41,6 +67,13 @@ const errorHandler: ErrorRequestHandler = (
 };
 
 app.use(errorHandler);
+
+// If running directly (not as Firebase function)
+if (process.env.NODE_ENV === "development") {
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
+}
 
 // Export the API as a Firebase Cloud Function
 export const api = onRequest(app);

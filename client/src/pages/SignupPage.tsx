@@ -43,7 +43,7 @@ const SignupPage = () => {
     try {
       await signup(email, password, username);
       console.log("User successfully signed up!");
-      navigate("/"); // Redirect to home page or dashboard after signup
+      navigate("/user-setup"); // Redirect to user setup page instead of home
     } catch (err: any) {
       console.error(err);
       if (err.code === "auth/email-already-in-use") {

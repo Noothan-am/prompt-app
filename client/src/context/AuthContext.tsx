@@ -14,11 +14,17 @@ import {
 } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
+import { collection, query, where, getDocs } from "firebase/firestore";
 
 interface User {
   uid: string;
   email: string | null;
   name?: string;
+  username?: string;
+  displayName?: string;
+  bio?: string;
+  location?: string;
+  profileSetupComplete?: boolean;
   role?: "user" | "admin" | "community_manager";
 }
 
@@ -29,6 +35,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
+  checkUsernameAvailability: (username: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -65,6 +72,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
               uid: firebaseUser.uid,
               email: firebaseUser.email,
               name: userData.name,
+              username: userData.username,
+              displayName: userData.displayName,
+              bio: userData.bio,
+              location: userData.location,
+              profileSetupComplete: userData.profileSetupComplete,
               role: userData.role || "user",
             });
           } else {
@@ -140,6 +152,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     }
   };
 
+  // Check if username is available
+  const checkUsernameAvailability = async (
+    username: string
+  ): Promise<boolean> => {
+    try {
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("username", "==", username));
+      const querySnapshot = await getDocs(q);
+
+      // Username is available if no documents found
+      return querySnapshot.empty;
+    } catch (error) {
+      console.error("Error checking username availability:", error);
+      throw error;
+    }
+  };
+
   const value = {
     currentUser,
     isLoading,
@@ -147,6 +176,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     login,
     signup,
     logout,
+    checkUsernameAvailability,
   };
 
   return (
