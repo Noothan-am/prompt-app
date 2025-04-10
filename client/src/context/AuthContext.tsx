@@ -5,22 +5,30 @@ import React, {
   ReactNode,
   useEffect,
 } from "react";
-
-type UserRole = "user" | "admin" | "community_manager";
+import {
+  User as FirebaseUser,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+} from "firebase/auth";
+import { doc, setDoc, getDoc } from "firebase/firestore";
+import { auth, db } from "../firebase";
 
 interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: UserRole;
+  uid: string;
+  email: string | null;
+  name?: string;
+  role?: "user" | "admin" | "community_manager";
 }
 
 interface AuthContextType {
-  user: User | null;
+  currentUser: User | null;
+  isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
-  loginAsCommunityManager: () => void;
+  signup: (email: string, password: string, name: string) => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -36,93 +44,116 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
-  // Create a default user for testing purposes
-  const defaultUser: User = {
-    id: "123",
-    name: "noothan",
-    email: "noothan@gmail.in",
-    role: "user",
-  };
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  const [user, setUser] = useState<User | null>(defaultUser);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
-
-  // Check for existing session on load
+  // Listen for auth state changes
   useEffect(() => {
-    // In a real app, you would check localStorage or cookies for auth token
-    // and validate it with your backend
-    const savedUser = localStorage.getItem("user");
-    if (savedUser) {
-      try {
-        setUser(JSON.parse(savedUser));
-        setIsAuthenticated(true);
-      } catch (e) {
-        console.error("Failed to parse saved user data");
-        localStorage.removeItem("user");
-        // Set the default user if the saved one fails
-        setUser(defaultUser);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setIsLoading(true);
+
+      if (firebaseUser) {
+        // User is signed in
+        try {
+          // Get additional user data from Firestore
+          const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
+
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            setCurrentUser({
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              name: userData.name,
+              role: userData.role || "user",
+            });
+          } else {
+            // Basic user data if Firestore document doesn't exist
+            setCurrentUser({
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              role: "user",
+            });
+          }
+          setIsAuthenticated(true);
+        } catch (error) {
+          console.error("Error fetching user data:", error);
+          setCurrentUser({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            role: "user",
+          });
+          setIsAuthenticated(true);
+        }
+      } else {
+        // User is signed out
+        setCurrentUser(null);
+        setIsAuthenticated(false);
       }
-    } else {
-      // If no saved user, use the default one for easier testing
-      localStorage.setItem("user", JSON.stringify(defaultUser));
-    }
+
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  // Mock login function
+  // Sign up with email and password
+  const signup = async (email: string, password: string, name: string) => {
+    try {
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      const user = userCredential.user;
+
+      // Store additional user data in Firestore
+      await setDoc(doc(db, "users", user.uid), {
+        name,
+        email,
+        role: "user",
+        createdAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("Error during signup:", error);
+      throw error;
+    }
+  };
+
+  // Sign in with email and password
   const login = async (email: string, password: string) => {
-    // In a real app, you would make an API call to authenticate
-    // This is just a mock implementation
-    const mockUser: User = {
-      id: "123",
-      name: email.split("@")[0], // Use first part of email as name
-      email: email,
-      role: "user",
-    };
-
-    setUser(mockUser);
-    setIsAuthenticated(true);
-    localStorage.setItem("user", JSON.stringify(mockUser));
-
-    console.log("User logged in:", mockUser);
-    return Promise.resolve();
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (error) {
+      console.error("Error during login:", error);
+      throw error;
+    }
   };
 
-  // Enhanced logout to clear everything
-  const logout = () => {
-    setUser(null);
-    setIsAuthenticated(false);
-    localStorage.removeItem("user");
-
-    // Add delay before logging out to improve UX
-    console.log("User logged out");
-  };
-
-  // Mock function to switch to community manager role
-  const loginAsCommunityManager = () => {
-    // If user is already logged in, maintain their name and email
-    const communityManagerUser: User = {
-      id: "456",
-      name: user ? user.name : "Community Manager",
-      email: user ? user.email : "manager@example.com",
-      role: "community_manager",
-    };
-
-    setUser(communityManagerUser);
-    setIsAuthenticated(true);
-    localStorage.setItem("user", JSON.stringify(communityManagerUser));
-
-    console.log("Switched to community manager:", communityManagerUser);
+  // Sign out
+  const logout = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Error during logout:", error);
+      throw error;
+    }
   };
 
   const value = {
-    user,
+    currentUser,
+    isLoading,
     isAuthenticated,
     login,
+    signup,
     logout,
-    loginAsCommunityManager,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {!isLoading ? children : <div>Loading...</div>}
+    </AuthContext.Provider>
+  );
 };
 
 export default AuthContext;

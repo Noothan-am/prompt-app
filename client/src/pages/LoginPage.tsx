@@ -17,59 +17,77 @@ const LoginPage = () => {
     setIsLoading(true);
     setError("");
 
+    if (!email || !password) {
+      setError("Please enter both email and password");
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      // For demo purposes, simulate a delay to show loading state
-      await new Promise((resolve) => setTimeout(resolve, 800));
       await login(email, password);
-      navigate("/");
-    } catch (err) {
-      setError("Failed to log in. Please check your credentials.");
+      navigate("/"); // Redirect to the home page or dashboard after successful login
+    } catch (err: any) {
       console.error(err);
+      if (
+        err.code === "auth/user-not-found" ||
+        err.code === "auth/wrong-password"
+      ) {
+        setError("Invalid email or password");
+      } else if (err.code === "auth/too-many-requests") {
+        setError("Too many failed login attempts. Please try again later.");
+      } else if (err.code === "auth/invalid-email") {
+        setError("Invalid email address");
+      } else {
+        setError("Failed to log in: " + err.message);
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left column - Background */}
-      <div className="hidden md:block md:w-1/2 bg-gradient-to-r from-purple-400 via-pink-300 to-blue-400 relative overflow-hidden">
-        {/* Decorative squares */}
-        <div className="absolute top-24 left-24 w-20 h-20 bg-red-500 opacity-70"></div>
-        <div className="absolute bottom-48 left-48 w-32 h-32 bg-purple-600 rounded-lg opacity-50"></div>
-        <div className="absolute bottom-24 left-24 w-24 h-24 bg-blue-500 rounded-lg opacity-60"></div>
-        <div className="absolute top-1/3 left-1/3 w-16 h-16 bg-pink-500 rounded-sm opacity-60"></div>
-      </div>
-
-      {/* Right column - Form */}
-      <div className="w-full md:w-1/2 flex items-center justify-center p-8">
-        <div className="w-full max-w-md">
-          <div className="flex items-center mb-8">
-            <div className="h-8 w-8 rounded bg-red-500 text-white flex items-center justify-center mr-2">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="flex flex-col md:flex-row max-w-6xl w-full">
+        {/* Left side / Top on mobile - Introduction */}
+        <div className="md:flex-1 p-8 md:p-12 bg-gray-900 text-white">
+          <div className="max-w-md mx-auto">
+            <div className="h-8 w-8 rounded bg-red-500 text-white flex items-center justify-center mb-8">
               <span className="font-bold">+</span>
             </div>
-            <span className="text-gray-800 font-medium">tempo</span>
-          </div>
-
-          <div className="text-center mb-10">
-            <h1 className="text-4xl font-bold text-gray-900 mb-2 uppercase tracking-wide">
-              WELCOME
+            <h1 className="text-3xl md:text-4xl font-bold mb-6">
+              Welcome back to Tempo
             </h1>
-            <h1 className="text-4xl font-bold text-gray-900 mb-8 uppercase tracking-wide">
-              BACK.
-            </h1>
-            <p className="text-gray-600">Log in to your account to continue.</p>
+            <p className="text-lg mb-8 text-gray-300">
+              Sign in to access your account, create content, and collaborate
+              with the community.
+            </p>
+            <div className="hidden md:block">
+              <div className="w-32 h-6 bg-gray-700 rounded-full mb-4"></div>
+              <div className="w-40 h-6 bg-gray-700 rounded-full mb-4"></div>
+              <div className="w-24 h-6 bg-gray-700 rounded-full"></div>
+            </div>
           </div>
+        </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Right side / Bottom on mobile - Form */}
+        <div className="md:flex-1 p-8 md:p-12 bg-white">
+          <div className="max-w-md mx-auto">
+            <h2 className="text-2xl font-bold text-gray-900 mb-8">Sign in</h2>
+
             {error && (
-              <div className="p-3 rounded-md bg-red-50 text-red-500 text-sm">
+              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
                 {error}
               </div>
             )}
 
-            <div>
-              <div className="relative">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div>
+                <label
+                  htmlFor="email"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Email address
+                </label>
                 <input
                   id="email"
                   name="email"
@@ -78,14 +96,17 @@ const LoginPage = () => {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="appearance-none block w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Email"
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-gray-900 focus:border-gray-900"
                 />
               </div>
-            </div>
 
-            <div>
-              <div className="relative">
+              <div>
+                <label
+                  htmlFor="password"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Password
+                </label>
                 <input
                   id="password"
                   name="password"
@@ -94,126 +115,96 @@ const LoginPage = () => {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="appearance-none block w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Password"
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-gray-900 focus:border-gray-900"
                 />
               </div>
-            </div>
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  name="remember-me"
-                  type="checkbox"
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <label
-                  htmlFor="remember-me"
-                  className="ml-2 block text-sm text-gray-700"
-                >
-                  Remember me
-                </label>
-              </div>
-
-              <div className="text-sm">
-                <a
-                  href="#"
-                  className="font-medium text-gray-900 hover:text-gray-700"
-                >
-                  Forgot password?
-                </a>
-              </div>
-            </div>
-
-            <div>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
-                  isLoading ? "bg-gray-500" : "bg-gray-900 hover:bg-gray-800"
-                } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors`}
-              >
-                {isLoading ? (
-                  <svg
-                    className="animate-spin h-5 w-5 mr-2 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <input
+                    id="remember-me"
+                    name="remember-me"
+                    type="checkbox"
+                    className="h-4 w-4 text-gray-900 focus:ring-gray-500 border-gray-300 rounded"
+                  />
+                  <label
+                    htmlFor="remember-me"
+                    className="ml-2 block text-sm text-gray-700"
                   >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                ) : null}
-                {isLoading ? "Logging in..." : "Log In"}
-              </button>
-            </div>
-          </form>
+                    Remember me
+                  </label>
+                </div>
 
-          <div className="mt-8">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
+                <div className="text-sm">
+                  <a
+                    href="#"
+                    className="font-medium text-gray-900 hover:text-gray-700"
+                  >
+                    Forgot password?
+                  </a>
+                </div>
               </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500"></span>
+
+              <div>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+                    isLoading ? "opacity-70 cursor-not-allowed" : ""
+                  }`}
+                >
+                  {isLoading ? "Signing in..." : "Sign in"}
+                </button>
               </div>
-            </div>
+            </form>
 
             <div className="mt-6">
-              <button
-                type="button"
-                className="w-full inline-flex items-center justify-center py-3 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-              >
-                <FcGoogle className="h-5 w-5 mr-2" />
-                Log In with Google
-              </button>
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300" />
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-white text-gray-500">
+                    Or continue with
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-6 grid grid-cols-3 gap-3">
+                <button
+                  type="button"
+                  className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                >
+                  <FcGoogle className="h-5 w-5" />
+                </button>
+                <button
+                  type="button"
+                  className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                >
+                  <FaFacebook className="h-5 w-5 text-blue-600" />
+                </button>
+                <button
+                  type="button"
+                  className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                >
+                  <FaApple className="h-5 w-5" />
+                </button>
+              </div>
             </div>
 
-            <div className="mt-3">
-              <button
-                type="button"
-                className="w-full inline-flex items-center justify-center py-3 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+            <p className="mt-8 text-center text-sm text-gray-600">
+              Don't have an account?{" "}
+              <Link
+                to="/signup"
+                className="font-medium text-gray-900 hover:text-gray-700 underline"
               >
-                <FaFacebook className="h-5 w-5 text-blue-600 mr-2" />
-                Log In with Facebook
-              </button>
+                Sign Up
+              </Link>
+            </p>
+
+            <div className="mt-16 text-center text-xs text-gray-500">
+              ©Tempo, Inc 2023
             </div>
-
-            <div className="mt-3">
-              <button
-                type="button"
-                className="w-full inline-flex items-center justify-center py-3 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-              >
-                <FaApple className="h-5 w-5 mr-2" />
-                Log In with Apple
-              </button>
-            </div>
-          </div>
-
-          <p className="mt-8 text-center text-sm text-gray-600">
-            Don't have an account?{" "}
-            <Link
-              to="/signup"
-              className="font-medium text-gray-900 hover:text-gray-700 underline"
-            >
-              Sign Up
-            </Link>
-          </p>
-
-          <div className="mt-16 text-center text-xs text-gray-500">
-            ©Tempo, Inc 2023
           </div>
         </div>
       </div>

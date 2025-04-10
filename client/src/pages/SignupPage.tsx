@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { FiMail, FiLock, FiUser } from "react-icons/fi";
 import { FcGoogle } from "react-icons/fc";
 import { FaFacebook, FaApple } from "react-icons/fa";
+import { useAuth } from "../context/AuthContext";
 
 const SignupPage = () => {
   const [username, setUsername] = useState("");
@@ -10,16 +11,58 @@ const SignupPage = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [agreeTerms, setAgreeTerms] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
+  const { signup } = useAuth();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle signup logic here
-    console.log({ username, email, password, confirmPassword, agreeTerms });
+    setLoading(true);
+    setError("");
+
+    // Validation checks
+    if (!username || !email || !password || !confirmPassword) {
+      setError("All fields are required");
+      setLoading(false);
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      setLoading(false);
+      return;
+    }
+
+    if (!agreeTerms) {
+      setError("You must agree to the terms and conditions");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      await signup(email, password, username);
+      console.log("User successfully signed up!");
+      navigate("/"); // Redirect to home page or dashboard after signup
+    } catch (err: any) {
+      console.error(err);
+      if (err.code === "auth/email-already-in-use") {
+        setError("Email already in use. Please try another email.");
+      } else if (err.code === "auth/weak-password") {
+        setError("Password is too weak. Please choose a stronger password.");
+      } else if (err.code === "auth/invalid-email") {
+        setError("Invalid email address. Please check your email.");
+      } else {
+        setError("Failed to create account. " + err.message);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-      <div className="max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 flex">
+      <div className="flex w-full max-w-6xl">
         {/* Left side - Image/Gradient */}
         <div className="hidden lg:block lg:w-1/2">
           <div className="h-full bg-gradient-to-br from-purple-400 via-pink-300 to-blue-400 flex flex-col justify-center p-12">
@@ -42,7 +85,7 @@ const SignupPage = () => {
         </div>
 
         {/* Right side - Form */}
-        <div className="w-full lg:w-1/2 bg-white rounded-lg shadow-lg overflow-hidden">
+        <div className="w-full lg:w-1/2 bg-white p-8 md:p-12 shadow-lg rounded-lg">
           <div className="p-8">
             <div className="flex items-center mb-8">
               <div className="h-8 w-8 rounded bg-red-500 text-white flex items-center justify-center mr-2">
@@ -55,6 +98,12 @@ const SignupPage = () => {
               Create an account
             </h1>
             <p className="text-gray-600 mb-8">Sign up to get started</p>
+
+            {error && (
+              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                {error}
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
@@ -185,9 +234,12 @@ const SignupPage = () => {
               <div>
                 <button
                   type="submit"
-                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  disabled={loading}
+                  className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+                    loading ? "opacity-70 cursor-not-allowed" : ""
+                  }`}
                 >
-                  Sign Up
+                  {loading ? "Creating Account..." : "Sign Up"}
                 </button>
               </div>
             </form>
