@@ -1,3 +1,7 @@
+import { initializeApp } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
+import { getAuth } from "firebase-admin/auth";
+import { onRequest, onCall, HttpsError } from "firebase-functions/v2/https";
 import express, {
   Request,
   Response,
@@ -5,15 +9,19 @@ import express, {
   ErrorRequestHandler,
 } from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 
-// Load environment variables
-dotenv.config();
+// Initialize Firebase
+initializeApp();
 
+// Get Firebase services
+const db = getFirestore();
+const auth = getAuth();
+
+// Express app
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({ origin: true }));
 app.use(express.json());
 
 // Basic route
@@ -34,8 +42,72 @@ const errorHandler: ErrorRequestHandler = (
 
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 5000;
+// Export the API as a Firebase Cloud Function
+export const api = onRequest(app);
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+// Function to get user profile
+export const getUserProfile = onCall(async (request) => {
+  try {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "User must be authenticated");
+    }
+
+    const userRecord = await auth.getUser(request.auth.uid);
+
+    return {
+      success: true,
+      data: {
+        uid: userRecord.uid,
+        email: userRecord.email,
+        displayName: userRecord.displayName,
+        photoURL: userRecord.photoURL,
+      },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "An unknown error occurred",
+    };
+  }
+});
+
+// Function to create a prompt
+export const createPrompt = onCall(async (request) => {
+  try {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "User must be authenticated");
+    }
+
+    const { title, content } = request.data;
+    if (!title || !content) {
+      throw new HttpsError(
+        "invalid-argument",
+        "Title and content are required"
+      );
+    }
+
+    const promptRef = db.collection("prompts").doc();
+    const prompt = {
+      id: promptRef.id,
+      userId: request.auth.uid,
+      title,
+      content,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    await promptRef.set(prompt);
+
+    return {
+      success: true,
+      data: prompt,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "An unknown error occurred",
+    };
+  }
 });
