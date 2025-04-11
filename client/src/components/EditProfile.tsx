@@ -41,13 +41,26 @@ const EditProfile = ({ onClose }: EditProfileProps) => {
           const userData = userDoc.data();
           setBio(userData.bio || "");
           setLocation(userData.location || "");
+
+          // Prioritize Firestore photoURL as it might be more up-to-date
+          if (userData.photoURL) {
+            setPhotoURL(userData.photoURL);
+            setPreviewURL(userData.photoURL);
+          } else if (auth.currentUser.photoURL) {
+            setPhotoURL(auth.currentUser.photoURL);
+            setPreviewURL(auth.currentUser.photoURL);
+          }
         }
 
         // Get user info from Auth
         setDisplayName(auth.currentUser.displayName || "");
         setEmail(auth.currentUser.email || "");
-        setPhotoURL(auth.currentUser.photoURL || "");
-        setPreviewURL(auth.currentUser.photoURL || "");
+
+        // Only set photo from Auth if not already set from Firestore
+        if (!photoURL) {
+          setPhotoURL(auth.currentUser.photoURL || "");
+          setPreviewURL(auth.currentUser.photoURL || "");
+        }
       } catch (err) {
         console.error("Error fetching user data:", err);
         setError("Failed to load user data");
@@ -90,14 +103,14 @@ const EditProfile = ({ onClose }: EditProfileProps) => {
       if (!currentUser) throw new Error("User not authenticated");
 
       // Upload new profile photo if selected
+      let updatedPhotoURL = photoURL;
       if (photoFile) {
         const storageRef = ref(storage, `profile-photos/${currentUser.uid}`);
         await uploadBytes(storageRef, photoFile);
-        const downloadURL = await getDownloadURL(storageRef);
-        setPhotoURL(downloadURL);
+        updatedPhotoURL = await getDownloadURL(storageRef);
 
         // Update photo URL in Auth profile
-        await updateProfile(currentUser, { photoURL: downloadURL });
+        await updateProfile(currentUser, { photoURL: updatedPhotoURL });
       }
 
       // Update display name in Auth profile
@@ -121,9 +134,12 @@ const EditProfile = ({ onClose }: EditProfileProps) => {
         email,
         bio,
         location,
-        photoURL: photoFile ? photoURL : currentUser.photoURL,
+        photoURL: updatedPhotoURL,
         updatedAt: new Date().toISOString(),
       });
+
+      // Update local state with the new photo URL
+      setPhotoURL(updatedPhotoURL);
 
       setSuccess("Profile updated successfully!");
 

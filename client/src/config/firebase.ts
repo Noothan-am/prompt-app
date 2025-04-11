@@ -15,10 +15,21 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
+console.log(
+  "Firebase config initialized with projectId:",
+  firebaseConfig.projectId
+);
+
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const functions = getFunctions(app);
+
+console.log("Firebase services initialized:", {
+  auth: !!auth,
+  db: !!db,
+  functions: !!functions,
+});
 
 export { app, auth, db, functions };

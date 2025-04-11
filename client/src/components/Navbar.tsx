@@ -259,7 +259,9 @@ function Navbar({ toggleSidebar }: NavbarProps) {
               <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
                 {user ? (
                   <span className="text-xs font-semibold">
-                    {user.name.charAt(0)}
+                    {user.displayName?.charAt(0) ||
+                      user.email?.charAt(0) ||
+                      "U"}
                   </span>
                 ) : (
                   <CgProfile className="w-5 h-5" />
@@ -316,15 +318,15 @@ function Navbar({ toggleSidebar }: NavbarProps) {
             aria-label="Profile"
             data-dropdown-toggle="profile"
           >
-            {user ? (
-              <div className="w-7 h-7 bg-gray-200 rounded-full flex items-center justify-center">
+            <div className="w-7 h-7 bg-gray-200 rounded-full flex items-center justify-center">
+              {user ? (
                 <span className="text-xs font-semibold">
-                  {user.name.charAt(0)}
+                  {user.displayName?.charAt(0) || user.email?.charAt(0) || "U"}
                 </span>
-              </div>
-            ) : (
-              <CgProfile className="w-5 h-5" />
-            )}
+              ) : (
+                <CgProfile className="w-5 h-5" />
+              )}
+            </div>
           </button>
           <div
             className="absolute bottom-14 right-0 transform translate-y-2"

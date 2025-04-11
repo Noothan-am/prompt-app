@@ -11,6 +11,7 @@ import {
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
+  getAuth,
 } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
@@ -22,6 +23,7 @@ interface User {
   name?: string;
   username?: string;
   displayName?: string;
+  photoURL?: string;
   bio?: string;
   location?: string;
   profileSetupComplete?: boolean;
@@ -29,6 +31,8 @@ interface User {
 }
 
 interface AuthContextType {
+  user: FirebaseUser | null;
+  loading: boolean;
   currentUser: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
@@ -38,27 +42,35 @@ interface AuthContextType {
   checkUsernameAvailability: (username: string) => Promise<boolean>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  loading: true,
+  currentUser: null,
+  isLoading: true,
+  isAuthenticated: false,
+  login: async () => {},
+  signup: async () => {},
+  logout: async () => {},
+  checkUsernameAvailability: async () => true,
+});
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
-};
+export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
+  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // Listen for auth state changes
   useEffect(() => {
+    const auth = getAuth();
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setIsLoading(true);
+      setUser(firebaseUser);
+      setLoading(true);
 
       if (firebaseUser) {
         // User is signed in
@@ -74,6 +86,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
               name: userData.name,
               username: userData.username,
               displayName: userData.displayName,
+              photoURL: userData.photoURL,
               bio: userData.bio,
               location: userData.location,
               profileSetupComplete: userData.profileSetupComplete,
@@ -170,6 +183,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   const value = {
+    user,
+    loading,
     currentUser,
     isLoading,
     isAuthenticated,
